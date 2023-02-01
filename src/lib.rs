@@ -33,34 +33,42 @@ pub fn search(
 
     let mut matches: Vec<(u16, u16, u16)> = Vec::new();
 
-    for i in 0..schem.width - pattern_schem.width {
-        for j in 0..schem.height - pattern_schem.height {
-            for k in 0..schem.length - pattern_schem.length {
+    println!("{:?}", schem);
+    println!("{:?}", pattern_schem);
+
+    for x in 0..=schem.width - pattern_schem.width {
+        for y in 0..=schem.height - pattern_schem.height {
+            for z in 0..=schem.length - pattern_schem.length {
                 let mut match_found = true;
-                for x in 0..pattern_schem.width {
-                    for y in 0..pattern_schem.height {
-                        for z in 0..pattern_schem.length {
-                            let index = (i + x) as usize + (j + y) as usize * schem.width as usize + (k + z) as usize * schem.width as usize * schem.height as usize;
-                            let pattern_index = x as usize + y as usize * pattern_schem.width as usize + z as usize * pattern_schem.width as usize * pattern_schem.height as usize;
-                            if schem.block_data[index] != pattern_schem.block_data[pattern_index] {
+                'outer: for i in 0..pattern_schem.width {
+                    for j in 0..pattern_schem.height {
+                        for k in 0..pattern_schem.length {
+                            let index = (x + i) + (y + j) * schem.width + (z + k) * schem.width * schem.height;
+                            let pattern_index = i + j * pattern_schem.width + k * pattern_schem.width * pattern_schem.height;
+                            if schem.block_data.get(index as usize) != pattern_schem.block_data.get(pattern_index as usize) {
                                 match_found = false;
-                                break;
+                                break 'outer;
                             }
                         }
-                        if !match_found {
-                            break;
-                        }
-                    }
-                    if !match_found {
-                        break;
                     }
                 }
                 if match_found {
-                    matches.push((i, j, k));
+                    matches.push((x, y, z));
                 }
             }
         }
     }
+
+    /*
+    [
+     0, -1,  1, 1,  2,
+     0, -1,  2, 1,  0,
+     2, -1, -1, 2, -1,
+     2,  0,  0, 2, -1,
+     2,  1,  2, 2,  1
+     ]
+
+     */
 
     return matches;
 
@@ -128,9 +136,9 @@ mod tests {
 
     #[test]
     fn test_search() {
-        let file = std::fs::File::open("tests/simple.schem").expect("Failed to open file");
+        let file = std::fs::File::open("tests/Random.schem").expect("Failed to open file");
         let schematic = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
-        let file = std::fs::File::open("tests/endstone.schem").expect("Failed to open file");
+        let file = std::fs::File::open("tests/Pattern.schem").expect("Failed to open file");
         let pattern = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
 
         let matches = search(schematic, pattern, SearchBehavior {
@@ -140,5 +148,7 @@ mod tests {
         });
 
         println!("{:?}", matches);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0], (1, 0, 3));
     }
 }
