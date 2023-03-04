@@ -1,15 +1,26 @@
 use nbt::Map;
+use schemsearch_files::{Schematic, to_varint_array};
 use crate::normalize_data;
-use crate::schematic::Schematic;
 
-pub(crate) fn strip_data(schem: &Schematic) -> Schematic {
+fn create_reverse_palette(schem: &Schematic) -> Vec<String> {
+    let mut reverse_palette = Vec::with_capacity(schem.palette_max as usize);
+    (0..schem.palette_max).for_each(|_| reverse_palette.push(String::new()));
+    for (key, value) in schem.palette.iter() {
+        reverse_palette[*value as usize] = key.clone();
+    }
+    reverse_palette
+}
+
+pub fn strip_data(schem: &Schematic) -> Schematic {
     let mut data: Vec<i32> = Vec::new();
 
     let mut palette: Map<String, i32> = Map::new();
     let mut palette_max: i32 = 0;
+    let reverse_palette = create_reverse_palette(schem);
+    let dat = schem.read_blockdata();
 
-    for block in schem.block_data.iter() {
-        let block_name = schem.palette.iter().find(|(_, &v)| v == *block).expect("Invalid Schematic").0;
+    for block in dat.iter() {
+        let block_name = reverse_palette[*block as usize].clone();
         let block_name = block_name.split('[').next().unwrap().to_string();
 
         let entry = palette.entry(block_name).or_insert_with(|| {
@@ -25,7 +36,7 @@ pub(crate) fn strip_data(schem: &Schematic) -> Schematic {
         data_version: schem.data_version,
         palette,
         palette_max,
-        block_data: data,
+        block_data: to_varint_array(&data),
         block_entities: schem.block_entities.clone(),
         height: schem.height,
         length: schem.length,
@@ -39,7 +50,7 @@ pub(crate) fn strip_data(schem: &Schematic) -> Schematic {
 fn match_palette_adapt(schem: &Schematic, matching_palette: Map<String, i32>, ignore_data: bool) -> Vec<i32> {
     let mut data: Vec<i32> = Vec::new();
 
-    for x in schem.block_data.iter() {
+    for x in schem.read_blockdata().iter() {
         let blockname = schem.palette.iter().find(|(_, &v)| v == *x).expect("Invalid Schematic").0;
         let blockname = if ignore_data { normalize_data(&blockname, ignore_data) } else { blockname.clone() };
         let block_id = matching_palette.get(&blockname).unwrap_or(&-1);
@@ -49,7 +60,7 @@ fn match_palette_adapt(schem: &Schematic, matching_palette: Map<String, i32>, ig
     data
 }
 
-pub(crate) fn match_palette(
+pub fn match_palette(
     schem: &Schematic,
     pattern: &Schematic,
     ignore_data: bool,
@@ -74,23 +85,23 @@ fn match_palette_internal(
     let mut matching_palette: Map<String, i32> = Map::new();
     let mut matching_palette_max: i32 = 0;
 
-    for (block_name, block_id) in pattern.palette.iter() {
+    for (block_name, _) in pattern.palette.iter() {
         let block_name = normalize_data(block_name, true);
         let schem_block_id = pattern.palette.get(&block_name).expect("Pattern block not found in schematic palette");
         matching_palette.insert(block_name, *schem_block_id);
         matching_palette_max += 1;
     }
 
-    let mut data_schem: Vec<i32> = match_palette_adapt(&schem, matching_palette.clone(), true);
+    let data_schem: Vec<i32> = match_palette_adapt(&schem, matching_palette.clone(), true);
 
-    let mut data_pattern: Vec<i32> = match_palette_adapt(&pattern, matching_palette.clone(), true);
+    let data_pattern: Vec<i32> = match_palette_adapt(&pattern, matching_palette.clone(), true);
 
     let schem = Schematic {
         version: schem.version.clone(),
         data_version: schem.data_version.clone(),
         palette: matching_palette.clone(),
         palette_max: matching_palette_max.clone(),
-        block_data: data_schem,
+        block_data: to_varint_array(&data_schem),
         block_entities: schem.block_entities.clone(),
         height: schem.height.clone(),
         length: schem.length.clone(),
@@ -104,7 +115,7 @@ fn match_palette_internal(
         data_version: pattern.data_version.clone(),
         palette: matching_palette.clone(),
         palette_max: matching_palette_max.clone(),
-        block_data: data_pattern,
+        block_data: to_varint_array(&data_pattern),
         block_entities: pattern.block_entities.clone(),
         height: pattern.height.clone(),
         length: pattern.length.clone(),

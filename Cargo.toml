@@ -1,10 +1,6 @@
-[package]
-name = "schemsearch"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-hematite-nbt = "0.5.2"
-serde = "1.0.152"
+[workspace]
+members = [
+    "schemsearch-cli",
+    "schemsearch-lib",
+    "schemsearch-files"
+]

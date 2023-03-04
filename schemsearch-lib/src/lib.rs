@@ -1,10 +1,7 @@
-#![allow(unused_variables)]
+use pattern_mapper::match_palette;
+use schemsearch_files::Schematic;
 
-use crate::pattern_mapper::match_palette;
-use crate::schematic::Schematic;
-
-mod schematic;
-mod pattern_mapper;
+pub mod pattern_mapper;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchBehavior {
@@ -36,6 +33,9 @@ pub fn search(
     println!("{:?}", schem);
     println!("{:?}", pattern_schem);
 
+    let pattern_data = pattern_schem.read_blockdata();
+    let schem_data = schem.read_blockdata();
+
     for x in 0..=schem.width - pattern_schem.width {
         for y in 0..=schem.height - pattern_schem.height {
             for z in 0..=schem.length - pattern_schem.length {
@@ -45,7 +45,7 @@ pub fn search(
                         for k in 0..pattern_schem.length {
                             let index = (x + i) + (y + j) * schem.width + (z + k) * schem.width * schem.height;
                             let pattern_index = i + j * pattern_schem.width + k * pattern_schem.width * pattern_schem.height;
-                            if schem.block_data.get(index as usize) != pattern_schem.block_data.get(pattern_index as usize) {
+                            if schem_data.get(index as usize) != pattern_data.get(pattern_index as usize) {
                                 match_found = false;
                                 break 'outer;
                             }
@@ -74,7 +74,7 @@ pub fn search(
 
 }
 
-pub(crate) fn normalize_data(data: &String, ignore_data: bool) -> String {
+pub fn normalize_data(data: &String, ignore_data: bool) -> String {
     if ignore_data {
         data.split('[').next().unwrap().to_string()
     } else {
@@ -82,7 +82,7 @@ pub(crate) fn normalize_data(data: &String, ignore_data: bool) -> String {
     }
 }
 
-fn parse_schematic(data: &Vec<u8>) -> Schematic {
+pub fn parse_schematic(data: &Vec<u8>) -> Schematic {
     if data[0] == 0x1f && data[1] == 0x8b {
         // gzip
         nbt::from_gzip_reader(data.as_slice()).unwrap()
@@ -92,14 +92,16 @@ fn parse_schematic(data: &Vec<u8>) -> Schematic {
     }
 }
 
+#[allow(unused_imports)]
 mod tests {
     use std::path::Path;
-    use crate::pattern_mapper::{match_palette, strip_data};
+    use schemsearch_files::Schematic;
+    use crate::pattern_mapper::strip_data;
     use super::*;
 
     #[test]
     fn read_schematic() {
-        let schematic = Schematic::load(Path::new("tests/simple.schem"));
+        let schematic = Schematic::load(Path::new("../tests/simple.schem"));
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
         println!("{:?}", schematic);
@@ -107,7 +109,7 @@ mod tests {
 
     #[test]
     fn test_parse_function() {
-        let file = std::fs::File::open("tests/simple.schem").expect("Failed to open file");
+        let file = std::fs::File::open("../tests/simple.schem").expect("Failed to open file");
         let schematic: Schematic = parse_schematic(&std::io::Read::bytes(file).map(|b| b.unwrap()).collect());
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
@@ -116,7 +118,7 @@ mod tests {
 
     #[test]
     fn test_strip_schem() {
-        let schematic = Schematic::load(Path::new("tests/simple.schem"));
+        let schematic = Schematic::load(Path::new("../tests/simple.schem"));
         let stripped = strip_data(&schematic);
 
         assert_eq!(stripped.palette.keys().any(|k| k.contains('[')), false);
@@ -125,8 +127,8 @@ mod tests {
 
     #[test]
     fn test_match_palette() {
-        let schematic = Schematic::load(Path::new("tests/simple.schem"));
-        let endstone = Schematic::load(Path::new("tests/endstone.schem"));
+        let schematic = Schematic::load(Path::new("../tests/simple.schem"));
+        let endstone = Schematic::load(Path::new("../tests/endstone.schem"));
 
         let (matched_schematic, matched_endstone) = match_palette(&schematic, &endstone, true);
 
@@ -135,10 +137,11 @@ mod tests {
     }
 
     #[test]
-    fn test_search() {
-        let file = std::fs::File::open("tests/Random.schem").expect("Failed to open file");
+    pub fn test_search() {
+        let file = std::fs::File::open("../tests/Random.schem").expect("Failed to open file");
         let schematic = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
-        let file = std::fs::File::open("tests/Pattern.schem").expect("Failed to open file");
+        println!("{:?}", schematic);
+        let file = std::fs::File::open("../tests/Pattern.schem").expect("Failed to open file");
         let pattern = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
 
         let matches = search(schematic, pattern, SearchBehavior {
