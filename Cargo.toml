@@ -2,5 +2,6 @@
 members = [
     "schemsearch-cli",
     "schemsearch-lib",
-    "schemsearch-files"
+    "schemsearch-files",
+    "schemsearch-sql"
 ]
