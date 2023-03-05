@@ -5,9 +5,9 @@ pub mod pattern_mapper;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchBehavior {
-    ignore_block_data: bool,
-    ignore_block_entities: bool,
-    ignore_entities: bool,
+    pub ignore_block_data: bool,
+    pub ignore_block_entities: bool,
+    pub ignore_entities: bool,
 }
 
 pub fn search(

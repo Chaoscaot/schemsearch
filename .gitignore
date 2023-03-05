@@ -1,3 +1,5 @@
 /target
 /Cargo.lock
 /.idea/
+/SchemSearch.class
+/SchemSearch.h

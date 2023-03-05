@@ -3,5 +3,6 @@ members = [
     "schemsearch-cli",
     "schemsearch-lib",
     "schemsearch-files",
-    "schemsearch-sql"
+    "schemsearch-sql",
+    "schemsearch-java"
 ]
