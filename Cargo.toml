@@ -2,7 +2,15 @@
 members = [
     "schemsearch-cli",
     "schemsearch-lib",
+    "schemsearch_faster",
     "schemsearch-files",
     "schemsearch-sql",
     "schemsearch-java"
 ]
+
+[profile.test]
+inherits = "release"
+lto = true
+
+[profile.release]
+lto = true

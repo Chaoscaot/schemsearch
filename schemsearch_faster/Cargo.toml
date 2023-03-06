@@ -1,5 +1,5 @@
 [package]
-name = "schemsearch-cli"
+name = "schemsearch_faster"
 version = "0.1.0"
 edition = "2021"
 
@@ -8,4 +8,4 @@ edition = "2021"
 [dependencies]
 schemsearch-lib = { path = "../schemsearch-lib" }
 schemsearch-files = { path = "../schemsearch-files" }
-clap = { version = "4.1.8", features = ["cargo"] }
+hematite-nbt = "0.5.2"

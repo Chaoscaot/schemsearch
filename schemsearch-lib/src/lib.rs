@@ -1,23 +1,23 @@
+pub mod pattern_mapper;
+
 use pattern_mapper::match_palette;
 use schemsearch_files::Schematic;
-
-pub mod pattern_mapper;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchBehavior {
     pub ignore_block_data: bool,
     pub ignore_block_entities: bool,
+    pub ignore_air: bool,
+    pub air_as_any: bool,
     pub ignore_entities: bool,
+    pub threshold: f64,
 }
 
 pub fn search(
-    data: &Vec<u8>,
-    pattern: &Vec<u8>,
+    schem: &Schematic,
+    pattern_schem: &Schematic,
     search_behavior: SearchBehavior,
 ) -> Vec<(u16, u16, u16)> {
-    let schem: Schematic = parse_schematic(data);
-    let pattern_schem: Schematic = parse_schematic(pattern);
-
     if schem.width < pattern_schem.width || schem.height < pattern_schem.height || schem.length < pattern_schem.length {
         return vec![];
     }
@@ -26,52 +26,44 @@ pub fn search(
         return vec![];
     }
 
-    let (schem, pattern_schem) = match_palette(&schem, &pattern_schem, search_behavior.ignore_block_data);
+    let pattern_schem = match match_palette(&schem, &pattern_schem, search_behavior.ignore_block_data) {
+        Some(x) => x,
+        None => return vec![],
+    };
 
     let mut matches: Vec<(u16, u16, u16)> = Vec::new();
 
-    println!("{:?}", schem);
-    println!("{:?}", pattern_schem);
+    let pattern_data = pattern_schem.block_data;
+    let schem_data = &schem.block_data;
+    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
-    let pattern_data = pattern_schem.read_blockdata();
-    let schem_data = schem.read_blockdata();
+    let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f64;
 
-    for x in 0..=schem.width - pattern_schem.width {
-        for y in 0..=schem.height - pattern_schem.height {
-            for z in 0..=schem.length - pattern_schem.length {
-                let mut match_found = true;
-                'outer: for i in 0..pattern_schem.width {
-                    for j in 0..pattern_schem.height {
-                        for k in 0..pattern_schem.length {
-                            let index = (x + i) + (y + j) * schem.width + (z + k) * schem.width * schem.height;
-                            let pattern_index = i + j * pattern_schem.width + k * pattern_schem.width * pattern_schem.height;
-                            if schem_data.get(index as usize) != pattern_data.get(pattern_index as usize) {
-                                match_found = false;
-                                break 'outer;
+    for x in 0..=schem.width as usize - pattern_schem.width as usize {
+        for y in 0..=schem.height as usize - pattern_schem.height as usize {
+            for z in 0..=schem.length as usize - pattern_schem.length as usize {
+                let mut matching = 0;
+                for i in 0..pattern_schem.width as usize {
+                    for j in 0..pattern_schem.height as usize {
+                        for k in 0..pattern_schem.length as usize {
+                            let index = (x + i) + (y + j) * (schem.width as usize) + (z + k) * (schem.width as usize) * (schem.height as usize);
+                            let pattern_index = i + j * pattern_schem.width as usize + k * pattern_schem.width as usize * pattern_schem.height as usize;
+                            let data = schem_data.get(index as usize).expect("Index out of bounds");
+                            let pattern_data = pattern_data.get(pattern_index as usize).expect("Index out of bounds");
+                            if data == pattern_data || (search_behavior.ignore_air && *data == *air_id) || (search_behavior.air_as_any && *pattern_data == *air_id) {
+                                matching += 1;
                             }
                         }
                     }
                 }
-                if match_found {
-                    matches.push((x, y, z));
+                if matching as f64 / pattern_blocks > search_behavior.threshold {
+                    matches.push((x as u16, y as u16, z as u16));
                 }
             }
         }
     }
 
-    /*
-    [
-     0, -1,  1, 1,  2,
-     0, -1,  2, 1,  0,
-     2, -1, -1, 2, -1,
-     2,  0,  0, 2, -1,
-     2,  1,  2, 2,  1
-     ]
-
-     */
-
     return matches;
-
 }
 
 pub fn normalize_data(data: &String, ignore_data: bool) -> String {
@@ -104,7 +96,6 @@ mod tests {
         let schematic = Schematic::load(Path::new("../tests/simple.schem"));
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
-        println!("{:?}", schematic);
     }
 
     #[test]
@@ -113,7 +104,6 @@ mod tests {
         let schematic: Schematic = parse_schematic(&std::io::Read::bytes(file).map(|b| b.unwrap()).collect());
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
-        println!("{:?}", schematic);
     }
 
     #[test]
@@ -122,7 +112,6 @@ mod tests {
         let stripped = strip_data(&schematic);
 
         assert_eq!(stripped.palette.keys().any(|k| k.contains('[')), false);
-        println!("{:?}", stripped);
     }
 
     #[test]
@@ -130,17 +119,38 @@ mod tests {
         let schematic = Schematic::load(Path::new("../tests/simple.schem"));
         let endstone = Schematic::load(Path::new("../tests/endstone.schem"));
 
-        let (matched_schematic, matched_endstone) = match_palette(&schematic, &endstone, true);
+        let matched_schematic = match_palette(&schematic, &endstone, true);
+    }
 
-        println!("{:?}", matched_schematic);
-        println!("{:?}", matched_endstone);
+    #[test]
+    fn test_match_palette_ignore_data() {
+        let schematic = Schematic::load(Path::new("../tests/simple.schem"));
+        let endstone = Schematic::load(Path::new("../tests/endstone.schem"));
+
+        let matched_schematic = match_palette(&schematic, &endstone, false);
+    }
+
+    #[test]
+    pub fn test_big_search() {
+        let file = std::fs::File::open("../tests/simple.schem").expect("Failed to open file");
+        let schematic = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
+        let file = std::fs::File::open("../tests/endstone.schem").expect("Failed to open file");
+        let pattern = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
+
+        let matches = search(schematic, pattern, SearchBehavior {
+            ignore_block_data: true,
+            ignore_block_entities: true,
+            ignore_entities: true,
+            ignore_air: false,
+            air_as_any: false,
+            threshold: 0.9
+        });
     }
 
     #[test]
     pub fn test_search() {
         let file = std::fs::File::open("../tests/Random.schem").expect("Failed to open file");
         let schematic = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
-        println!("{:?}", schematic);
         let file = std::fs::File::open("../tests/Pattern.schem").expect("Failed to open file");
         let pattern = &std::io::Read::bytes(file).map(|b| b.unwrap()).collect();
 
@@ -148,6 +158,9 @@ mod tests {
             ignore_block_data: true,
             ignore_block_entities: true,
             ignore_entities: true,
+            ignore_air: false,
+            air_as_any: false,
+            threshold: 0.9
         });
 
         println!("{:?}", matches);

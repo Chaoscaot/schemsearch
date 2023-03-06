@@ -1,6 +1,7 @@
 use std::path::Path;
 use nbt::{Map, Value};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use serde::de::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Schematic {
@@ -22,12 +23,20 @@ pub struct Schematic {
     pub palette_max: i32,
     #[serde(rename = "Palette")]
     pub palette: Map<String, i32>,
-    #[serde(rename = "BlockData")]
-    pub block_data: Vec<u8>,
+    #[serde(rename = "BlockData", deserialize_with = "read_blockdata")]
+    pub block_data: Vec<i32>,
     #[serde(rename = "BlockEntities")]
     pub block_entities: Vec<BlockEntity>,
     #[serde(rename = "Entities")]
     pub entities: Option<Vec<Entity>>,
+}
+
+fn read_blockdata<'de, D>(deserializer: D) -> Result<Vec<i32>, D::Error>
+    where
+        D: Deserializer<'de>,
+{
+    let s: Vec<u8> = Deserialize::deserialize(deserializer)?;
+    Ok(read_varint_array(&s))
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -47,17 +56,16 @@ pub struct Entity {
 }
 
 impl Schematic {
-    pub fn load(path: &Path) -> Schematic {
-        let file = std::fs::File::open(path).expect("Failed to open file");
+    pub fn load(path: &Path) -> Result<Schematic, String> {
+        let file = match std::fs::File::open(path) {
+            Ok(x) => x,
+            Err(_) => return Err(format!("Failed to open file: {}", path.display()))
+        };
         let schematic: Schematic = match nbt::from_gzip_reader(file) {
             Ok(schem) => schem,
-            Err(e) => panic!("Failed to parse schematic: {}", e),
+            Err(e) => return Err(format!("Failed to parse schematic: {}", e))
         };
-        schematic
-    }
-
-    pub fn read_blockdata(&self) -> Vec<i32> {
-        read_varint_array(&self.block_data)
+        Ok(schematic)
     }
 }
 
@@ -88,21 +96,4 @@ pub fn read_varint_array(read: &Vec<u8>) -> Vec<i32> {
         }
     }
     data
-}
-
-pub fn to_varint_array(data: &Vec<i32>) -> Vec<u8> {
-    let mut bytes: Vec<u8> = Vec::new();
-    for value in data {
-        let mut value = *value as u32;
-        'inner: loop {
-            if (value & 0x80) == 0 {
-                bytes.push(value as u8);
-                break 'inner;
-            }
-
-            bytes.push((value & 0x7F) as u8 | 0x80);
-            value >>= 7;
-        }
-    }
-    bytes
 }
