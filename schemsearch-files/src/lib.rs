@@ -1,7 +1,6 @@
 use std::path::Path;
 use nbt::{Map, Value};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde::de::Error;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Schematic {

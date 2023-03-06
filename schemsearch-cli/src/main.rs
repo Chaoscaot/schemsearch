@@ -1,11 +1,8 @@
-use std::fmt::format;
 use std::fs::File;
-use std::io::{BufWriter, Stdout, StdoutLock, Write};
-use clap::{command, Arg, ArgAction, ColorChoice, value_parser, Command};
+use std::io::{BufWriter, StdoutLock, Write};
+use clap::{command, Arg, ArgAction, Command};
 use schemsearch_files::Schematic;
-use schemsearch_lib::pattern_mapper::match_palette;
 use std::path::Path;
-use clap::ArgAction::Help;
 use clap::error::ErrorKind;
 use schemsearch_lib::{search, SearchBehavior};
 
@@ -65,7 +62,7 @@ fn main() {
                 .long("output")
                 .action(ArgAction::Append)
                 .default_value("std")
-                .value_parser(["std_csv", "file_csv", "std"]),
+                .value_parser(["std_csv", "file_csv", "std", "file"]),
         )
         .arg(
             Arg::new("output-file")
@@ -125,10 +122,10 @@ fn main() {
         }
     };
 
-    let mut stdout = std::io::stdout();
+    let stdout = std::io::stdout();
     let mut lock = stdout.lock();
 
-    let mut file: Option<File> = None;
+    let file: Option<File>;
     let mut file_out: Option<BufWriter<File>> = None;
 
     if output_file || output_file_csv {
@@ -164,7 +161,7 @@ fn main() {
                         }
                     }
                 }
-                Err(e) => cmd.error(ErrorKind::Io, "Expected to be a dir").exit()
+                Err(e) => cmd.error(ErrorKind::Io, format!("Expected to be a dir: {}", e.to_string())).exit()
             }
         } else {
             search_schempath(&mut cmd, search_behavior, &pattern, &mut output_std, &mut output_std_csv, &mut output_file_csv, &mut output_file, &mut lock, &mut file_out, path)
@@ -183,21 +180,24 @@ fn search_schempath(cmd: &mut Command, search_behavior: SearchBehavior, pattern:
     if *output_std {
         writeln!(stdout, "Searching in schematic: {}", schem_path.file_name().unwrap().to_str().unwrap()).unwrap();
     }
+    if *output_file {
+        writeln!(file_out.as_mut().unwrap(), "Searching in schematic: {}", schem_path.file_name().unwrap().to_str().unwrap()).unwrap();
+    }
 
     let matches = search(&schematic, &pattern, search_behavior);
 
     for x in matches {
         if *output_std {
-            writeln!(stdout, "Found match at x: {}, y: {}, z: {}", x.0, x.1, x.2).unwrap();
+            writeln!(stdout, "Found match at x: {}, y: {}, z: {}, % = {}", x.0, x.1, x.2, x.3).unwrap();
         }
         if *output_std_csv {
-            writeln!(stdout, "{},{},{},{}", schem_path.file_name().unwrap().to_str().unwrap(), x.0, x.1, x.2).unwrap();
+            writeln!(stdout, "{},{},{},{},{}", schem_path.file_name().unwrap().to_str().unwrap(), x.0, x.1, x.2, x.3).unwrap();
         }
         if *output_file {
-            writeln!(file_out.as_mut().unwrap(), "Found match at x: {}, y: {}, z: {}", x.0, x.1, x.2).unwrap();
+            writeln!(file_out.as_mut().unwrap(), "Found match at x: {}, y: {}, z: {}, % = {}", x.0, x.1, x.2, x.3).unwrap();
         }
         if *output_file_csv {
-            writeln!(file_out.as_mut().unwrap(), "{},{},{},{}", schem_path.file_name().unwrap().to_str().unwrap(), x.0, x.1, x.2).unwrap();
+            writeln!(file_out.as_mut().unwrap(), "{},{},{},{},{}", schem_path.file_name().unwrap().to_str().unwrap(), x.0, x.1, x.2, x.3).unwrap();
         }
     }
 }
