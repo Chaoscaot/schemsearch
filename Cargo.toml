@@ -8,13 +8,6 @@ members = [
     "schemsearch-java"
 ]
 
-[profile.test]
-inherits = "release"
-lto = true
-
-[profile.release]
-lto = true
-
 [profile.small]
 inherits = "release"
 lto = true

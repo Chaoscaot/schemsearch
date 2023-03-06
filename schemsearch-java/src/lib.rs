@@ -18,7 +18,7 @@ pub extern "system" fn Java_SchemSearch_search<'local>(mut env: JNIEnv<'local>,
     let schematic = Schematic::load(Path::new(&schematic_path)).unwrap();
     let pattern = Schematic::load(Path::new(&pattern_path)).unwrap();
 
-    let matches = search(&schematic, &pattern, SearchBehavior {
+    let matches = search(schematic, &pattern, SearchBehavior {
         ignore_block_data: true,
         ignore_block_entities: true,
         ignore_entities: true,

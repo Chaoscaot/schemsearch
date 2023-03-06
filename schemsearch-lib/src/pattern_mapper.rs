@@ -17,9 +17,8 @@ pub fn strip_data(schem: &Schematic) -> Schematic {
     let mut palette: Map<String, i32> = Map::new();
     let mut palette_max: i32 = 0;
     let reverse_palette = create_reverse_palette(schem);
-    let dat = &schem.block_data;
 
-    for block in dat.iter() {
+    for block in schem.block_data.iter() {
         let block_name = reverse_palette[*block as usize].clone();
         let block_name = block_name.split('[').next().unwrap().to_string();
 
@@ -47,27 +46,28 @@ pub fn strip_data(schem: &Schematic) -> Schematic {
     }
 }
 
-fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32>, ignore_data: bool) -> Option<Vec<i32>> {
+pub fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32>, ignore_data: bool) -> Vec<i32> {
     let mut data: Vec<i32> = Vec::new();
+    let reverse_palette = create_reverse_palette(schem);
 
-    for x in schem.block_data.iter() {
-        let blockname = schem.palette.iter().find(|(_, &v)| v == *x).expect("Invalid Schematic").0;
+    for x in &schem.block_data {
+        let blockname = &reverse_palette[*x as usize];
         let blockname = if ignore_data { normalize_data(&blockname, ignore_data) } else { blockname.clone() };
         let block_id = match matching_palette.get(&blockname) {
-            None => return None,
-            Some(x) => x
+            None => -1,
+            Some(x) => *x
         };
-        data.push(*block_id);
+        data.push(block_id);
     }
 
-    Some(data)
+    data
 }
 
 pub fn match_palette(
     schem: &Schematic,
     pattern: &Schematic,
     ignore_data: bool,
-) -> Option<Schematic> {
+) -> Schematic {
     if ignore_data {
         match_palette_internal(&strip_data(schem), &strip_data(pattern), ignore_data)
     } else {
@@ -79,16 +79,10 @@ fn match_palette_internal(
     schem: &Schematic,
     pattern: &Schematic,
     ignore_data: bool,
-) -> Option<Schematic> {
-    if pattern.palette.iter().any(|(k, _)| schem.palette.get(k).is_none()) {
-        return None;
-    }
+) -> Schematic {
+    let data_pattern: Vec<i32> = match_palette_adapt(&pattern, &schem.palette, ignore_data);
 
-    let data_pattern: Vec<i32> = match match_palette_adapt(&pattern, &schem.palette, ignore_data) {
-        None => return None,
-        Some(x) => x
-    };
-    Some(Schematic {
+    Schematic {
         version: pattern.version.clone(),
         data_version: pattern.data_version.clone(),
         palette: schem.palette.clone(),
@@ -101,5 +95,5 @@ fn match_palette_internal(
         metadata: pattern.metadata.clone(),
         offset: pattern.offset.clone(),
         entities: None,
-    })
+    }
 }

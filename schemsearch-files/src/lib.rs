@@ -34,7 +34,7 @@ fn read_blockdata<'de, D>(deserializer: D) -> Result<Vec<i32>, D::Error>
     where
         D: Deserializer<'de>,
 {
-    let s: Vec<u8> = Deserialize::deserialize(deserializer)?;
+    let s: Vec<i8> = Deserialize::deserialize(deserializer)?;
     Ok(read_varint_array(&s))
 }
 
@@ -68,7 +68,7 @@ impl Schematic {
     }
 }
 
-pub fn read_varint_array(read: &Vec<u8>) -> Vec<i32> {
+pub fn read_varint_array(read: &Vec<i8>) -> Vec<i32> {
     let mut data = Vec::new();
     let mut value: i32 = 0;
     let mut position = 0;
@@ -76,7 +76,7 @@ pub fn read_varint_array(read: &Vec<u8>) -> Vec<i32> {
     let mut cursor = 0;
     loop {
         match read.get(cursor) {
-            Some(byte) => { current_byte = *byte; cursor += 1; },
+            Some(byte) => { current_byte = *byte as u8; cursor += 1; },
             None => break,
         };
 

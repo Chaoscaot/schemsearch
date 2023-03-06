@@ -2,6 +2,7 @@ pub mod pattern_mapper;
 
 use pattern_mapper::match_palette;
 use schemsearch_files::Schematic;
+use crate::pattern_mapper::match_palette_adapt;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SearchBehavior {
@@ -14,7 +15,7 @@ pub struct SearchBehavior {
 }
 
 pub fn search(
-    schem: &Schematic,
+    schem: Schematic,
     pattern_schem: &Schematic,
     search_behavior: SearchBehavior,
 ) -> Vec<(u16, u16, u16, f64)> {
@@ -26,15 +27,18 @@ pub fn search(
         return vec![];
     }
 
-    let pattern_schem = match match_palette(&schem, &pattern_schem, search_behavior.ignore_block_data) {
-        Some(x) => x,
-        None => return vec![],
-    };
+    let pattern_schem = match_palette(&schem, &pattern_schem, search_behavior.ignore_block_data);
 
     let mut matches: Vec<(u16, u16, u16, f64)> = Vec::new();
 
     let pattern_data = pattern_schem.block_data;
-    let schem_data = &schem.block_data;
+
+    let schem_data = if search_behavior.ignore_block_data {
+        match_palette_adapt(&schem, &pattern_schem.palette, search_behavior.ignore_block_data)
+    } else {
+        schem.block_data
+    };
+
     let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
     let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f64;
@@ -46,11 +50,11 @@ pub fn search(
                 for i in 0..pattern_schem.width as usize {
                     for j in 0..pattern_schem.height as usize {
                         for k in 0..pattern_schem.length as usize {
-                            let index = (x + i) + (y + j) * (schem.width as usize) + (z + k) * (schem.width as usize) * (schem.height as usize);
-                            let pattern_index = i + j * pattern_schem.width as usize + k * pattern_schem.width as usize * pattern_schem.height as usize;
+                            let index = (x + i) + (z + k) * (schem.width as usize) + (y + j) * (schem.width as usize) * (schem.length as usize);
+                            let pattern_index = i + k * pattern_schem.width as usize + j * pattern_schem.width as usize * pattern_schem.length as usize;
                             let data = schem_data.get(index as usize).expect("Index out of bounds");
                             let pattern_data = pattern_data.get(pattern_index as usize).expect("Index out of bounds");
-                            if data == pattern_data || (search_behavior.ignore_air && *data == *air_id) || (search_behavior.air_as_any && *pattern_data == *air_id) {
+                            if *data == *pattern_data || (search_behavior.ignore_air && *data == *air_id) || (search_behavior.air_as_any && *pattern_data == *air_id) {
                                 matching += 1;
                             }
                         }
@@ -136,7 +140,7 @@ mod tests {
         let schematic = Schematic::load(Path::new("../tests/simple.schem")).unwrap();
         let endstone = Schematic::load(Path::new("../tests/endstone.schem")).unwrap();
 
-        let _ = search(&schematic, &endstone, SearchBehavior {
+        let _ = search(schematic, &endstone, SearchBehavior {
             ignore_block_data: true,
             ignore_block_entities: true,
             ignore_entities: true,
@@ -151,7 +155,7 @@ mod tests {
         let schematic = Schematic::load(Path::new("../tests/Random.schem")).unwrap();
         let pattern = Schematic::load(Path::new("../tests/Pattern.schem")).unwrap();
 
-        let matches = search(&schematic, &pattern, SearchBehavior {
+        let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: true,
             ignore_block_entities: true,
             ignore_entities: true,
@@ -163,5 +167,23 @@ mod tests {
         println!("{:?}", matches);
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0], (1, 0, 3, 1.0));
+    }
+
+    #[test]
+    pub fn test_search_ws() {
+        let schematic = Schematic::load(Path::new("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
+        let pattern = Schematic::load(Path::new("../tests/gray_castle_complex.schem")).unwrap();
+
+        let matches = search(schematic, &pattern, SearchBehavior {
+            ignore_block_data: false,
+            ignore_block_entities: false,
+            ignore_entities: false,
+            ignore_air: false,
+            air_as_any: false,
+            threshold: 0.9
+        });
+
+        println!("{:?}", matches);
+        assert_eq!(matches.len(), 1);
     }
 }

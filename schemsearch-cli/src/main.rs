@@ -29,14 +29,14 @@ fn main() {
         )
         .arg(
             Arg::new("ignore-block-entities")
-                .help("Ignores block entities when searching")
+                .help("Ignores block entities when searching [Not Implemented]")
                 .short('b')
                 .long("ignore-block-entities")
                 .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("ignore-entities")
-                .help("Ignores entities when searching")
+                .help("Ignores entities when searching [Not Implemented]")
                 .short('e')
                 .long("ignore-entities")
                 .action(ArgAction::SetTrue),
@@ -184,7 +184,7 @@ fn search_schempath(cmd: &mut Command, search_behavior: SearchBehavior, pattern:
         writeln!(file_out.as_mut().unwrap(), "Searching in schematic: {}", schem_path.file_name().unwrap().to_str().unwrap()).unwrap();
     }
 
-    let matches = search(&schematic, &pattern, search_behavior);
+    let matches = search(schematic, pattern, search_behavior);
 
     for x in matches {
         if *output_std {
