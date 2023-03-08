@@ -169,7 +169,7 @@ fn main() {
             Some(x) => x
         };
 
-        file = match std::fs::File::create(output_file_path) {
+        file = match File::create(output_file_path) {
             Ok(x) => Some(x),
             Err(e) => {
                 cmd.error(ErrorKind::Io, format!("Error while creating output file: {}", e.to_string())).exit();

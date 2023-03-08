@@ -1,6 +1,6 @@
 use std::sync::Mutex;
-use sqlx::{Executor, MySql, Pool, Row};
-use sqlx::mysql::MySqlPoolOptions;
+use sqlx::{Executor, MySql, MySqlPool, Pool, Row};
+use sqlx::mysql::MySqlConnectOptions;
 
 mod properties;
 
@@ -15,9 +15,14 @@ pub async unsafe fn get_connection() {
     let mut conn = CONN.lock().unwrap();
     if conn.is_none() {
         let properties = properties::load_mysql_properties();
-        let _ = conn.insert(MySqlPoolOptions::new()
-            .max_connections(5)
-            .connect(&format!("mysql://{}:{}@{}/{}", properties.user, properties.password, properties.host, properties.database))
+        let _ = conn.insert(MySqlPool::connect_with(
+            MySqlConnectOptions::new()
+                .host(properties.host.as_str())
+                .port(3306)
+                .username(properties.user.as_str())
+                .password(properties.password.as_str())
+                .database(properties.database.as_str())
+        )
             .await.expect("Failed to connect to database"));
     }
 }
