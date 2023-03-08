@@ -1,3 +1,4 @@
+use std::io::Read;
 use std::path::Path;
 use nbt::{Map, Value};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -55,16 +56,20 @@ pub struct Entity {
 }
 
 impl Schematic {
+    pub fn load_data<R>(data: R) -> Result<Schematic, String> where R: Read {
+        let schematic: Schematic = match nbt::from_gzip_reader(data) {
+            Ok(schem) => schem,
+            Err(e) => return Err(format!("Failed to parse schematic: {}", e))
+        };
+        Ok(schematic)
+    }
+
     pub fn load(path: &Path) -> Result<Schematic, String> {
         let file = match std::fs::File::open(path) {
             Ok(x) => x,
             Err(_) => return Err(format!("Failed to open file: {}", path.display()))
         };
-        let schematic: Schematic = match nbt::from_gzip_reader(file) {
-            Ok(schem) => schem,
-            Err(e) => return Err(format!("Failed to parse schematic: {}", e))
-        };
-        Ok(schematic)
+        Schematic::load_data(file)
     }
 }
 

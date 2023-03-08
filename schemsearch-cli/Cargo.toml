@@ -2,10 +2,18 @@
 name = "schemsearch-cli"
 version = "0.1.0"
 edition = "2021"
+license = "AGPL-3.0-or-later"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 schemsearch-lib = { path = "../schemsearch-lib" }
 schemsearch-files = { path = "../schemsearch-files" }
+schemsearch-sql = { path = "../schemsearch-sql", optional = true }
+
 clap = { version = "4.1.8", features = ["cargo"] }
+futures = { version = "0.3", optional = true }
+sqlx = { version = "0.6", features = [ "runtime-async-std-native-tls" , "mysql" ], optional = true }
+
+[features]
+sql = [ "dep:schemsearch-sql", "dep:futures", "dep:sqlx" ]

@@ -2,12 +2,12 @@
 name = "schemsearch-sql"
 version = "0.1.0"
 edition = "2021"
+license = "AGPL-3.0-or-later"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sqlx = { version = "0.6", features = [ "runtime-tokio-native-tls" , "mysql" ] }
-tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.6", features = [ "runtime-async-std-native-tls" , "mysql" ] }
 
 schemsearch-lib = { path = "../schemsearch-lib" }
 schemsearch-files = { path = "../schemsearch-files" }
