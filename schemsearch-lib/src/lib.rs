@@ -78,7 +78,7 @@ pub fn search(
                     }
                 }
                 let matching_percent = matching as f64 / pattern_blocks;
-                if matching_percent > search_behavior.threshold {
+                if matching_percent >= search_behavior.threshold {
                     matches.push((x as u16, y as u16, z as u16, matching_percent));
                 }
             }
