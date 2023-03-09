@@ -25,7 +25,7 @@ impl SchematicFilter {
     pub fn build(self) -> String {
         let mut query = Vec::new();
         if let Some(user_id) = self.user_id {
-            query.push(user_id.into_iter().map(|id| format!("ND.NodeOwner = {}", id)).collect::<Vec<String>>().join(" OR "));
+            query.push(user_id.into_iter().map(|id| format!("SN.NodeOwner = {}", id)).collect::<Vec<String>>().join(" OR "));
         }
         if let Some(name) = self.name {
             query.push(name.into_iter().map(|name| format!("SN.NodeName LIKE '%{}%'", name)).collect::<Vec<String>>().join(" OR "));

@@ -182,6 +182,7 @@ fn main() {
             }))
         };
     }
+
     if schematics.is_empty() {
         cmd.error(ErrorKind::MissingRequiredArgument, "No schematics specified").exit();
     }
@@ -239,7 +240,7 @@ fn main() {
                                             search_schempath(search_behavior, &pattern, &mut output_std, &mut output_std_csv, &mut output_file_csv, &mut output_file, &mut lock, &mut file_out, schematic, x.path().file_name().unwrap().to_str().unwrap().to_string());
                                         }
                                     }
-                                    Err(e) => cmd.error(ErrorKind::Io, format!("Error while reading dir: {}", e.to_string())).exit()
+                                    Err(e) => cmd.error(ErrorKind::Io, format!("Error while reading schem: {}", e.to_string())).exit()
                                 }
                             }
                         }

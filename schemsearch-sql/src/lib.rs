@@ -65,3 +65,7 @@ pub async fn load_schemdata(id: i32) -> Vec<u8> {
     rows.get(0)
 }
 
+pub async fn close() {
+    unsafe { CONN.lock().unwrap().take().unwrap().close().await }
+}
+

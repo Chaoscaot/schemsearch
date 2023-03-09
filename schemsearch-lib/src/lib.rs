@@ -107,6 +107,7 @@ pub fn parse_schematic(data: &Vec<u8>) -> Schematic {
 }
 
 #[allow(unused_imports)]
+#[cfg(test)]
 mod tests {
     use std::path::Path;
     use schemsearch_files::Schematic;
