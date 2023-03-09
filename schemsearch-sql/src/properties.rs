@@ -35,6 +35,8 @@ pub(crate) fn load_mysql_properties() -> SqlProperties {
         properties.insert(split[0].to_string(), split[1].to_string());
     }
 
+    println!("{:?}", properties);
+
     SqlProperties {
         host: properties.get("host").unwrap().to_string(),
         user: properties.get("user").unwrap().to_string(),
