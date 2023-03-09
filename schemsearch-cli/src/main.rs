@@ -258,7 +258,9 @@ fn main() {
                         search_schempath(search_behavior, &pattern, &mut output_std, &mut output_std_csv, &mut output_file_csv, &mut output_file, &mut lock, &mut file_out, schematic, schem.get_name());
                     }
                     Err(e) => {
-                        println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
+                        if !output_std && !output_std_csv {
+                            println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
+                        }
                     }
                 }
             }
