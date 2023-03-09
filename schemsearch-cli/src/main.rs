@@ -19,7 +19,7 @@ mod types;
 
 use std::fs::File;
 use std::io::{BufWriter, StdoutLock, Write};
-use clap::{command, Arg, ArgAction, Command};
+use clap::{command, Arg, ArgAction, Command, ValueHint};
 use schemsearch_files::Schematic;
 use std::path::Path;
 use clap::error::ErrorKind;
@@ -27,6 +27,7 @@ use schemsearch_lib::{search, SearchBehavior};
 use crate::types::{PathSchematicSupplier, SchematicSupplierType};
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
+use schemsearch_sql::filter::SchematicFilter;
 #[cfg(feature = "sql")]
 use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
@@ -39,11 +40,13 @@ fn main() {
             Arg::new("pattern")
                 .help("The pattern to search for")
                 .required(true)
+                .value_hint(ValueHint::FilePath)
                 .action(ArgAction::Set),
         )
         .arg(
             Arg::new("schematic")
                 .help("The schematics to search in")
+                .value_hint(ValueHint::AnyPath)
                 .action(ArgAction::Append),
         )
         .arg(
@@ -95,6 +98,7 @@ fn main() {
                 .help("The output file")
                 .short('O')
                 .long("output-file")
+                .value_hint(ValueHint::FilePath)
                 .action(ArgAction::Append)
         )
         .arg(
@@ -113,10 +117,27 @@ fn main() {
     let mut cmd = cmd
         .arg(
                 Arg::new("sql")
-                .help("The sql file to write to")
+                .help("Use the SteamWar SQL Database")
                 .short('s')
                 .long("sql")
                 .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("sql-filter-user")
+                .help("Filter the schematics by the owners userid")
+                .short('u')
+                .long("sql-filter-user")
+                .action(ArgAction::Append)
+                .value_parser(|s: &str| s.parse::<u32>().map_err(|e| e.to_string()))
+                .requires("sql"),
+        )
+        .arg(
+            Arg::new("sql-filter-name")
+                .help("Filter the schematics by the schematic name")
+                .short('n')
+                .long("sql-filter-name")
+                .action(ArgAction::Append)
+                .requires("sql"),
         );
 
     let matches = cmd.get_matches_mut();
@@ -148,12 +169,20 @@ fn main() {
 
     #[cfg(feature = "sql")]
     if matches.get_flag("sql") {
-        for schem in block_on(load_all_schematics()) {
+        let mut filter = SchematicFilter::default();
+        if let Some(x) = matches.get_many::<u32>("sql-filter-user") {
+            filter = filter.user_id(x.collect());
+        }
+        if let Some(x) = matches.get_many::<String>("sql-filter-name") {
+            filter = filter.name(x.collect());
+        }
+        for schem in block_on(load_all_schematics(filter)) {
             schematics.push(SchematicSupplierType::SQL(SqlSchematicSupplier{
                 node: schem
             }))
         };
-    } else if schematics.is_empty() {
+    }
+    if schematics.is_empty() {
         cmd.error(ErrorKind::MissingRequiredArgument, "No schematics specified").exit();
     }
 

@@ -18,8 +18,10 @@
 use std::sync::Mutex;
 use sqlx::{Executor, MySql, MySqlPool, Pool, Row};
 use sqlx::mysql::MySqlConnectOptions;
+use crate::filter::SchematicFilter;
 
 mod properties;
+pub mod filter;
 
 static mut CONN: Mutex<Option<Pool<MySql>>> = Mutex::new(None);
 
@@ -44,10 +46,10 @@ pub async unsafe fn get_connection() {
     }
 }
 
-pub async fn load_all_schematics() -> Vec<SchematicNode> {
+pub async fn load_all_schematics(filter: SchematicFilter) -> Vec<SchematicNode> {
     unsafe { get_connection().await; }
     let mut schematics = Vec::new();
-    let rows = unsafe { &CONN }.lock().unwrap().as_mut().unwrap().fetch_all("SELECT SN.NodeId, SN.NodeName FROM NodeData ND INNER JOIN SchematicNode SN ON SN.NodeId = ND.NodeId WHERE NodeFormat = true").await.expect("Failed to fetch schematics");
+    let rows = unsafe { &CONN }.lock().unwrap().as_mut().unwrap().fetch_all(format!("SELECT SN.NodeId, SN.NodeName FROM NodeData ND INNER JOIN SchematicNode SN ON SN.NodeId = ND.NodeId WHERE NodeFormat = true {}", filter.build()).as_str()).await.expect("Failed to fetch schematics");
     for row in rows {
         schematics.push(SchematicNode {
             id: row.get(0),
