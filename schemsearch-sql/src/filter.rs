@@ -23,6 +23,9 @@ impl SchematicFilter {
     }
 
     pub fn build(self) -> String {
+        if self.user_id.is_none() && self.name.is_none() {
+            return String::new();
+        }
         let mut query = Vec::new();
         if let Some(user_id) = self.user_id {
             query.push(user_id.into_iter().map(|id| format!("SN.NodeOwner = {}", id)).collect::<Vec<String>>().join(" OR "));
