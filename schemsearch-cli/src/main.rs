@@ -17,6 +17,7 @@
 
 mod types;
 
+use std::fmt::Debug;
 use std::fs::File;
 use std::io;
 use std::io::{BufWriter, Write};
@@ -157,6 +158,8 @@ fn main() {
     if matches.contains_id("help") {
         return;
     }
+
+    let start = std::time::Instant::now();
 
     let search_behavior = SearchBehavior {
         ignore_block_data: matches.get_flag("ignore-data"),
@@ -312,6 +315,9 @@ fn main() {
             }
         }
     }
+
+    let end = std::time::Instant::now();
+    println!("Finished in {:.2}s! Searched in {} Schematics", end.duration_since(start).as_secs_f32(), schematics.len());
 }
 
 fn load_schem(schem_path: &PathBuf) -> Option<Schematic> {
