@@ -28,14 +28,14 @@ pub struct SearchBehavior {
     pub ignore_air: bool,
     pub air_as_any: bool,
     pub ignore_entities: bool,
-    pub threshold: f64,
+    pub threshold: f32,
 }
 
 pub fn search(
     schem: Schematic,
     pattern_schem: &Schematic,
     search_behavior: SearchBehavior,
-) -> Vec<(u16, u16, u16, f64)> {
+) -> Vec<(u16, u16, u16, f32)> {
     if schem.width < pattern_schem.width || schem.height < pattern_schem.height || schem.length < pattern_schem.length {
         return vec![];
     }
@@ -46,9 +46,9 @@ pub fn search(
 
     let pattern_schem = match_palette(&schem, &pattern_schem, search_behavior.ignore_block_data);
 
-    let mut matches: Vec<(u16, u16, u16, f64)> = Vec::new();
+    let mut matches: Vec<(u16, u16, u16, f32)> = Vec::new();
 
-    let pattern_data = pattern_schem.block_data;
+    let pattern_data = pattern_schem.block_data.as_slice();
 
     let schem_data = if search_behavior.ignore_block_data {
         match_palette_adapt(&schem, &pattern_schem.palette, search_behavior.ignore_block_data)
@@ -56,28 +56,38 @@ pub fn search(
         schem.block_data
     };
 
+    let schem_data = schem_data.as_slice();
+
     let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
-    let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f64;
+    let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f32;
 
-    for x in 0..=schem.width as usize - pattern_schem.width as usize {
-        for y in 0..=schem.height as usize - pattern_schem.height as usize {
-            for z in 0..=schem.length as usize - pattern_schem.length as usize {
+    let pattern_width = pattern_schem.width as usize;
+    let pattern_height = pattern_schem.height as usize;
+    let pattern_length = pattern_schem.length as usize;
+
+    let schem_width = schem.width as usize;
+    let schem_height = schem.height as usize;
+    let schem_length = schem.length as usize;
+
+    for y in 0..=schem_height - pattern_height {
+        for z in 0..=schem_length - pattern_length {
+            for x in 0..=schem_width - pattern_width {
                 let mut matching = 0;
-                for i in 0..pattern_schem.width as usize {
-                    for j in 0..pattern_schem.height as usize {
-                        for k in 0..pattern_schem.length as usize {
-                            let index = (x + i) + (z + k) * (schem.width as usize) + (y + j) * (schem.width as usize) * (schem.length as usize);
-                            let pattern_index = i + k * pattern_schem.width as usize + j * pattern_schem.width as usize * pattern_schem.length as usize;
-                            let data = schem_data.get(index as usize).expect("Index out of bounds");
-                            let pattern_data = pattern_data.get(pattern_index as usize).expect("Index out of bounds");
+                for j in 0..pattern_height {
+                    for k in 0..pattern_length {
+                        for i in 0..pattern_width {
+                            let index = (x + i) + schem_width * ((z + k) + (y + j) * schem_length);
+                            let pattern_index = i + pattern_width * (k + j * pattern_length);
+                            let data = unsafe {schem_data.get_unchecked(index) };
+                            let pattern_data = unsafe { pattern_data.get_unchecked(pattern_index) };
                             if *data == *pattern_data || (search_behavior.ignore_air && *data == *air_id) || (search_behavior.air_as_any && *pattern_data == *air_id) {
                                 matching += 1;
                             }
                         }
                     }
                 }
-                let matching_percent = matching as f64 / pattern_blocks;
+                let matching_percent = matching as f32 / pattern_blocks;
                 if matching_percent >= search_behavior.threshold {
                     matches.push((x as u16, y as u16, z as u16, matching_percent));
                 }
@@ -88,11 +98,12 @@ pub fn search(
     return matches;
 }
 
-pub fn normalize_data(data: &String, ignore_data: bool) -> String {
+#[inline]
+pub fn normalize_data(data: &str, ignore_data: bool) -> &str {
     if ignore_data {
-        data.split('[').next().unwrap().to_string()
+        data.split('[').next().unwrap()
     } else {
-        data.to_string()
+        data
     }
 }
 

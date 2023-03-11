@@ -19,11 +19,11 @@ use nbt::Map;
 use schemsearch_files::Schematic;
 use crate::normalize_data;
 
-fn create_reverse_palette(schem: &Schematic) -> Vec<String> {
+fn create_reverse_palette(schem: &Schematic) -> Vec<&str> {
     let mut reverse_palette = Vec::with_capacity(schem.palette_max as usize);
-    (0..schem.palette_max).for_each(|_| reverse_palette.push(String::new()));
+    (0..schem.palette_max).for_each(|_| reverse_palette.push(""));
     for (key, value) in schem.palette.iter() {
-        reverse_palette[*value as usize] = key.clone();
+        reverse_palette[*value as usize] = key;
     }
     reverse_palette
 }
@@ -68,9 +68,9 @@ pub fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32
     let reverse_palette = create_reverse_palette(schem);
 
     for x in &schem.block_data {
-        let blockname = &reverse_palette[*x as usize];
-        let blockname = if ignore_data { normalize_data(&blockname, ignore_data) } else { blockname.clone() };
-        let block_id = match matching_palette.get(&blockname) {
+        let blockname = reverse_palette[*x as usize];
+        let blockname = if ignore_data { normalize_data(blockname, ignore_data) } else { blockname };
+        let block_id = match matching_palette.get(&*blockname) {
             None => -1,
             Some(x) => *x
         };

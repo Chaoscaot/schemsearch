@@ -108,7 +108,7 @@ fn main() {
                 .long("threshold")
                 .action(ArgAction::Set)
                 .default_value("0.9")
-                .value_parser(|s: &str| s.parse::<f64>().map_err(|e| e.to_string())),
+                .value_parser(|s: &str| s.parse::<f32>().map_err(|e| e.to_string())),
         )
         .about("Searches for a pattern in a schematic")
         .bin_name("schemsearch");
@@ -152,7 +152,7 @@ fn main() {
         ignore_air: matches.get_flag("ignore-air"),
         air_as_any: matches.get_flag("air-as-any"),
         ignore_entities: matches.get_flag("ignore-entities"),
-        threshold: *matches.get_one::<f64>("threshold").expect("Couldn't get threshold"),
+        threshold: *matches.get_one::<f32>("threshold").expect("Couldn't get threshold"),
     };
 
     let pattern = match Schematic::load(Path::new(matches.get_one::<String>("pattern").unwrap())) {

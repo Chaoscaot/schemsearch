@@ -14,3 +14,6 @@ lto = true
 strip = true
 opt-level = "z"
 codegen-units = 1
+
+[profile.release]
+lto = true
