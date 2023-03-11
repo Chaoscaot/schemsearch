@@ -15,26 +15,26 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::path::Path;
+use std::path::PathBuf;
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
 use schemsearch_files::Schematic;
 #[cfg(feature = "sql")]
 use schemsearch_sql::{load_schemdata, SchematicNode};
 
-pub enum SchematicSupplierType<'local> {
-    PATH(Box<PathSchematicSupplier<'local>>),
+pub enum SchematicSupplierType {
+    PATH(Box<PathSchematicSupplier>),
     #[cfg(feature = "sql")]
     SQL(SqlSchematicSupplier),
 }
 
-pub struct PathSchematicSupplier<'local> {
-    pub path: &'local Path,
+pub struct PathSchematicSupplier {
+    pub path: PathBuf,
 }
 
-impl PathSchematicSupplier<'_> {
+impl PathSchematicSupplier {
     pub fn get_name(&self) -> String {
-        self.path.file_name().unwrap().to_str().unwrap().to_string()
+        self.path.file_stem().unwrap().to_str().unwrap().to_string()
     }
 }
 

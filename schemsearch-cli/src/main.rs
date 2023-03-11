@@ -18,15 +18,18 @@
 mod types;
 
 use std::fs::File;
-use std::io::{BufWriter, StdoutLock, Write};
-use clap::{command, Arg, ArgAction, Command, ValueHint};
+use std::io;
+use std::io::{BufWriter, Write};
+use clap::{command, Arg, ArgAction, ValueHint};
 use schemsearch_files::Schematic;
-use std::path::Path;
+use std::path::PathBuf;
 use clap::error::ErrorKind;
 use schemsearch_lib::{search, SearchBehavior};
 use crate::types::{PathSchematicSupplier, SchematicSupplierType};
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
+use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 use schemsearch_sql::filter::SchematicFilter;
 #[cfg(feature = "sql")]
 use schemsearch_sql::load_all_schematics;
@@ -110,6 +113,15 @@ fn main() {
                 .default_value("0.9")
                 .value_parser(|s: &str| s.parse::<f32>().map_err(|e| e.to_string())),
         )
+        .arg(
+            Arg::new("threads")
+                .help("The number of threads to use [0 = Available Threads]")
+                .short('T')
+                .long("threads")
+                .action(ArgAction::Set)
+                .default_value("0")
+                .value_parser(|s: &str| s.parse::<usize>().map_err(|e| e.to_string())),
+        )
         .about("Searches for a pattern in a schematic")
         .bin_name("schemsearch");
 
@@ -155,16 +167,35 @@ fn main() {
         threshold: *matches.get_one::<f32>("threshold").expect("Couldn't get threshold"),
     };
 
-    let pattern = match Schematic::load(Path::new(matches.get_one::<String>("pattern").unwrap())) {
+    let pattern = match Schematic::load(&PathBuf::from(matches.get_one::<String>("pattern").unwrap())) {
         Ok(x) => x,
         Err(e) => {
             cmd.error(ErrorKind::Io, format!("Error while loading Pattern: {}", e.to_string())).exit();
         }
     };
 
-    let mut schematics: Vec<SchematicSupplierType> = match matches.get_many::<String>("schematic") {
-        None => vec![],
-        Some(x) => x.map(|x| SchematicSupplierType::PATH(Box::new(PathSchematicSupplier{path: Path::new(x) }))).collect()
+    let mut schematics: Vec<SchematicSupplierType> = Vec::new();
+    match matches.get_many::<String>("schematic") {
+        None => {},
+        Some(x) => {
+            let paths = x.map(|x| PathBuf::from(x));
+            for path in paths {
+                if path.is_dir() {
+                    path.read_dir()
+                        .expect("Couldn't read directory")
+                        .filter_map(|x| x.ok())
+                        .filter(|x| x.path().is_file())
+                        .filter(|x| x.path().extension().unwrap().to_str().unwrap() == "schem")
+                        .for_each(|x| {
+                            schematics.push(SchematicSupplierType::PATH(Box::new(PathSchematicSupplier {
+                                path: x.path(),
+                            })))
+                        });
+                } else if path.extension().unwrap().to_str().unwrap() == "schem" {
+                    schematics.push(SchematicSupplierType::PATH(Box::new(PathSchematicSupplier { path })));
+                }
+            }
+        }
     };
 
     #[cfg(feature = "sql")]
@@ -201,10 +232,6 @@ fn main() {
             _ => {}
         }
     };
-
-    let stdout = std::io::stdout();
-    let mut lock = stdout.lock();
-
     let file: Option<File>;
     let mut file_out: Option<BufWriter<File>> = None;
 
@@ -224,81 +251,82 @@ fn main() {
         };
         file_out = Some(BufWriter::new(file.unwrap()));
     }
+    ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    for schem in schematics {
+    let matches: Vec<Result> = schematics.par_iter().map(|schem| {
         match schem {
             SchematicSupplierType::PATH(schem) => {
-                let path = schem.path;
-                if path.is_dir() {
-                    match path.read_dir() {
-                        Ok(x) => {
-                            for path in x {
-                                match path {
-                                    Ok(x) => {
-                                        if x.path().extension().unwrap_or_default() == "schem" {
-                                            let schematic = load_schem(&mut cmd, &x.path());
-                                            search_schempath(search_behavior, &pattern, &mut output_std, &mut output_std_csv, &mut output_file_csv, &mut output_file, &mut lock, &mut file_out, schematic, x.path().file_name().unwrap().to_str().unwrap().to_string());
-                                        }
-                                    }
-                                    Err(e) => cmd.error(ErrorKind::Io, format!("Error while reading schem: {}", e.to_string())).exit()
-                                }
-                            }
-                        }
-                        Err(e) => cmd.error(ErrorKind::Io, format!("Expected to be a dir: {}", e.to_string())).exit()
+                let schematic = match load_schem(&schem.path) {
+                    Some(x) => x,
+                    None => return Result {
+                        name: schem.get_name(),
+                        matches: vec![]
                     }
-                } else {
-                    let schematic = load_schem(&mut cmd, &path);
-                    search_schempath(search_behavior, &pattern, &mut output_std, &mut output_std_csv, &mut output_file_csv, &mut output_file, &mut lock, &mut file_out, schematic, schem.get_name());
+                };
+                Result {
+                    name: schem.get_name(),
+                    matches: search(schematic, &pattern, search_behavior)
                 }
             }
             #[cfg(feature = "sql")]
             SchematicSupplierType::SQL(schem) => {
                 match schem.get_schematic() {
                     Ok(schematic) => {
-                        search_schempath(search_behavior, &pattern, &mut output_std, &mut output_std_csv, &mut output_file_csv, &mut output_file, &mut lock, &mut file_out, schematic, schem.get_name());
+                        Result {
+                            name: schem.get_name(),
+                            matches: search(schematic, &pattern, search_behavior)
+                        }
                     }
                     Err(e) => {
                         if !output_std && !output_std_csv {
                             println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
                         }
+                        Result {
+                            name: schem.get_name(),
+                            matches: vec![]
+                        }
                     }
                 }
+            }
+        }
+    }).collect();
+
+    let stdout = io::stdout();
+    let mut lock = stdout.lock();
+
+    for matching in matches {
+        let schem_name = matching.name;
+        let matching = matching.matches;
+        for x in matching {
+            if output_std {
+                writeln!(lock, "Found match in '{}' at x: {}, y: {}, z: {}, % = {}", schem_name, x.0, x.1, x.2, x.3).unwrap();
+            }
+            if output_std_csv {
+                writeln!(lock, "{},{},{},{},{}", schem_name, x.0, x.1, x.2, x.3).unwrap();
+            }
+            if output_file {
+                writeln!(file_out.as_mut().unwrap(), "Found match in '{}' at x: {}, y: {}, z: {}, % = {}", schem_name, x.0, x.1, x.2, x.3).unwrap();
+            }
+            if output_file_csv {
+                writeln!(file_out.as_mut().unwrap(), "{},{},{},{},{}", schem_name, x.0, x.1, x.2, x.3).unwrap();
             }
         }
     }
 }
 
-fn load_schem(cmd: &mut Command, schem_path: &Path) -> Schematic {
+fn load_schem(schem_path: &PathBuf) -> Option<Schematic> {
     match Schematic::load(schem_path) {
-        Ok(x) => x,
+        Ok(x) => Some(x),
         Err(e) => {
-            cmd.error(ErrorKind::Io, format!("Error while loading Schematic ({}): {}", schem_path.file_name().unwrap().to_str().unwrap(), e.to_string())).exit();
+            println!("Error while loading schematic ({}): {}", schem_path.to_str().unwrap(), e.to_string());
+            None
         }
     }
 }
 
-fn search_schempath(search_behavior: SearchBehavior, pattern: &Schematic, output_std: &mut bool, output_std_csv: &mut bool, output_file_csv: &mut bool, output_file: &mut bool, stdout: &mut StdoutLock, file_out: &mut Option<BufWriter<File>>, schematic: Schematic, schem_name: String) {
-    if *output_std {
-        writeln!(stdout, "Searching in schematic: {}", schem_name).unwrap();
-    }
-    if *output_file {
-        writeln!(file_out.as_mut().unwrap(), "Searching in schematic: {}", schem_name).unwrap();
-    }
-
-    let matches = search(schematic, pattern, search_behavior);
-
-    for x in matches {
-        if *output_std {
-            writeln!(stdout, "Found match at x: {}, y: {}, z: {}, % = {}", x.0, x.1, x.2, x.3).unwrap();
-        }
-        if *output_std_csv {
-            writeln!(stdout, "{},{},{},{},{}", schem_name, x.0, x.1, x.2, x.3).unwrap();
-        }
-        if *output_file {
-            writeln!(file_out.as_mut().unwrap(), "Found match at x: {}, y: {}, z: {}, % = {}", x.0, x.1, x.2, x.3).unwrap();
-        }
-        if *output_file_csv {
-            writeln!(file_out.as_mut().unwrap(), "{},{},{},{},{}", schem_name, x.0, x.1, x.2, x.3).unwrap();
-        }
-    }
+#[derive(Debug, Clone)]
+struct Result {
+    name: String,
+    matches: Vec<(u16, u16, u16, f32)>,
 }
+

@@ -14,6 +14,7 @@ schemsearch-sql = { path = "../schemsearch-sql", optional = true }
 clap = { version = "4.1.8", features = ["cargo"] }
 futures = { version = "0.3", optional = true }
 sqlx = { version = "0.6", features = [ "runtime-async-std-native-tls" , "mysql" ], optional = true }
+rayon = "1.7.0"
 
 [features]
-sql = [ "dep:schemsearch-sql", "dep:futures", "dep:sqlx" ]
+sql = ["dep:schemsearch-sql", "dep:futures", "dep:sqlx"]

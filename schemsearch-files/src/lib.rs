@@ -16,7 +16,7 @@
  */
 
 use std::io::Read;
-use std::path::Path;
+use std::path::PathBuf;
 use nbt::{Map, Value};
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -81,10 +81,10 @@ impl Schematic {
         Ok(schematic)
     }
 
-    pub fn load(path: &Path) -> Result<Schematic, String> {
+    pub fn load(path: &PathBuf) -> Result<Schematic, String> {
         let file = match std::fs::File::open(path) {
             Ok(x) => x,
-            Err(_) => return Err(format!("Failed to open file: {}", path.display()))
+            Err(_) => return Err(format!("Failed to open file: {}", path.to_str().unwrap()))
         };
         Schematic::load_data(file)
     }

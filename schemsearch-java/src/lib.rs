@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::path::Path;
+use std::path::PathBuf;
 use jni::JNIEnv;
 
 use jni::objects::{JClass, JString};
@@ -32,8 +32,8 @@ pub extern "system" fn Java_SchemSearch_search<'local>(mut env: JNIEnv<'local>,
     pattern_path: JString<'local>) -> jstring {
     let schematic_path: String = env.get_string(&schematic_path).expect("Couldn't get java string!").into();
     let pattern_path: String = env.get_string(&pattern_path).expect("Couldn't get java string!").into();
-    let schematic = Schematic::load(Path::new(&schematic_path)).unwrap();
-    let pattern = Schematic::load(Path::new(&pattern_path)).unwrap();
+    let schematic = Schematic::load(&PathBuf::from(&schematic_path)).unwrap();
+    let pattern = Schematic::load(&PathBuf::from(&pattern_path)).unwrap();
 
     let matches = search(schematic, &pattern, SearchBehavior {
         ignore_block_data: true,
