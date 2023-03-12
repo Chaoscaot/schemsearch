@@ -120,14 +120,14 @@ pub fn parse_schematic(data: &Vec<u8>) -> Schematic {
 #[allow(unused_imports)]
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use schemsearch_files::Schematic;
     use crate::pattern_mapper::strip_data;
     use super::*;
 
     #[test]
     fn read_schematic() {
-        let schematic = Schematic::load(Path::new("../tests/simple.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
     }
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_strip_schem() {
-        let schematic = Schematic::load(Path::new("../tests/simple.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let stripped = strip_data(&schematic);
 
         assert_eq!(stripped.palette.keys().any(|k| k.contains('[')), false);
@@ -150,24 +150,24 @@ mod tests {
 
     #[test]
     fn test_match_palette() {
-        let schematic = Schematic::load(Path::new("../tests/simple.schem")).unwrap();
-        let endstone = Schematic::load(Path::new("../tests/endstone.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = match_palette(&schematic, &endstone, true);
     }
 
     #[test]
     fn test_match_palette_ignore_data() {
-        let schematic = Schematic::load(Path::new("../tests/simple.schem")).unwrap();
-        let endstone = Schematic::load(Path::new("../tests/endstone.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = match_palette(&schematic, &endstone, false);
     }
 
     #[test]
     pub fn test_big_search() {
-        let schematic = Schematic::load(Path::new("../tests/simple.schem")).unwrap();
-        let endstone = Schematic::load(Path::new("../tests/endstone.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = search(schematic, &endstone, SearchBehavior {
             ignore_block_data: true,
@@ -181,8 +181,8 @@ mod tests {
 
     #[test]
     pub fn test_search() {
-        let schematic = Schematic::load(Path::new("../tests/Random.schem")).unwrap();
-        let pattern = Schematic::load(Path::new("../tests/Pattern.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
+        let pattern = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
 
         let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: true,
@@ -200,8 +200,8 @@ mod tests {
 
     #[test]
     pub fn test_search_ws() {
-        let schematic = Schematic::load(Path::new("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
-        let pattern = Schematic::load(Path::new("../tests/gray_castle_complex.schem")).unwrap();
+        let schematic = Schematic::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
+        let pattern = Schematic::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
 
         let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: false,

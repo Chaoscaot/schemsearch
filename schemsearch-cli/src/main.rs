@@ -36,6 +36,7 @@ use schemsearch_sql::filter::SchematicFilter;
 use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
 use crate::types::SqlSchematicSupplier;
+use indicatif::{ProgressBar, ParallelProgressIterator, ProgressStyle};
 
 fn main() {
     #[allow(unused_mut)]
@@ -256,7 +257,7 @@ fn main() {
     }
     ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    let matches: Vec<Result> = schematics.par_iter().map(|schem| {
+    let matches: Vec<Result> = schematics.par_iter().progress_with_style(ProgressStyle::default_bar()).map(|schem| {
         match schem {
             SchematicSupplierType::PATH(schem) => {
                 let schematic = match load_schem(&schem.path) {
