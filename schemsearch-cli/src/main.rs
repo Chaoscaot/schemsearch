@@ -257,7 +257,7 @@ fn main() {
     }
     ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    let matches: Vec<Result> = schematics.par_iter().progress_with_style(ProgressStyle::default_bar()).map(|schem| {
+    let matches: Vec<Result> = schematics.par_iter().progress_with_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap()).map(|schem| {
         match schem {
             SchematicSupplierType::PATH(schem) => {
                 let schematic = match load_schem(&schem.path) {
