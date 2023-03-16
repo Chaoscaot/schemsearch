@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: cargo build --verbose --release
+        run: cargo build --verbose --release -p schemsearch-cli
       - name: Create Tarball
         if: ${{ matrix.os != 'windows-latest' }}
         run: tar -czvf schemsearch-cli-${{ matrix.os }}.tar.gz -C target/release schemsearch-cli
