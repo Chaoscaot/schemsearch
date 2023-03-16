@@ -1,0 +1,29 @@
+name: Release Build
+
+on:
+  release:
+    types:
+      - published
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --verbose --release
+      - name: Create Tarball
+        run: tar -czvf schemsearch-cli.tar.gz -C target/release schemsearch-cli
+      - name: upload linux artifact
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ steps.published_release.outputs.upload_url }}
+          asset_path: schemsearch-cli.tar.gz
+          asset_name: schemsearch-cli-linux.tar.gz
+          asset_content_type: application/gzip
