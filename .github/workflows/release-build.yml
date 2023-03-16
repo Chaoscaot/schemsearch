@@ -10,20 +10,43 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v3
       - name: Build
         run: cargo build --verbose --release
       - name: Create Tarball
+        if: ${{ matrix.os != 'windows-latest' }}
         run: tar -czvf schemsearch-cli.tar.gz -C target/release schemsearch-cli
-      - name: upload linux artifact
+      - name: upload linux/darwin artifact
+        if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: schemsearch-cli.tar.gz
-          asset_name: schemsearch-cli-linux.tar.gz
+          asset_path: schemsearch-cli-${{ matrix.os }}.tar.gz
+          asset_name: schemsearch-cli-${{ matrix.os }}.tar.gz
           asset_content_type: application/gzip
+      - uses: vimtor/action-zip@v1
+        name: Compress
+        if: ${{ matrix.os == 'windows-latest' }}
+        with:
+          files: target/release/schemsearch-cli.exe
+          dest: schemsearch-cli-${{ matrix.os }}.zip
+      - name: upload windows artifact
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: schemsearch-cli-${{ matrix.os }}.zip
+          asset_name: schemsearch-cli-${{ matrix.os }}.zip
+          asset_content_type: application/zip
