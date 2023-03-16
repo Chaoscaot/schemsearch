@@ -46,27 +46,27 @@ pub fn unwrap_palette(palette: &Map<String, i32>) -> Vec<String> {
 
 #[allow(unused_imports)]
 mod tests {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
     use schemsearch_files::Schematic;
     use crate::{convert_to_search_space, unwrap_palette};
 
     #[test]
     pub fn test() {
-        let schematic = Schematic::load(Path::new("../tests/Pattern.schem"));
+        let schematic = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
         dbg!(convert_to_search_space(&schematic, &unwrap_palette(&schematic.palette)));
     }
 
     #[test]
     pub fn test_2() {
-        let schematic = Schematic::load(Path::new("../tests/Pattern.schem"));
-        let schematic2 = Schematic::load(Path::new("../tests/Random.schem"));
+        let schematic = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
+        let schematic2 = Schematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
         println!("{:?}", convert_to_search_space(&schematic2, &unwrap_palette(&schematic.palette)));
     }
 
     #[test]
     pub fn test_big() {
-        let schematic = Schematic::load(Path::new("../tests/endstone.schem"));
-        let schematic2 = Schematic::load(Path::new("../tests/simple.schem"));
+        let schematic = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic2 = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let _ = convert_to_search_space(&schematic2, &unwrap_palette(&schematic.palette));
     }
 }
