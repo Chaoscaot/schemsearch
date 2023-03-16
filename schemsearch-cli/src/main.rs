@@ -31,6 +31,7 @@ use crate::types::{PathSchematicSupplier, SchematicSupplierType};
 use futures::executor::block_on;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
+#[cfg(feature = "sql")]
 use schemsearch_sql::filter::SchematicFilter;
 #[cfg(feature = "sql")]
 use schemsearch_sql::load_all_schematics;
