@@ -37,6 +37,7 @@ use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
 use crate::types::SqlSchematicSupplier;
 use indicatif::{ParallelProgressIterator, ProgressStyle};
+use schemsearch_files::Schematic;
 
 fn main() {
     #[allow(unused_mut)]
