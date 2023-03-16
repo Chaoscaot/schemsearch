@@ -48,9 +48,9 @@ cargo build --release
 
 ### Features: schemsearch-sql
 This feature is not enabled by default as it is a specific implementation for the SteamWar.de Minecraft server.
-You shouldn't enable this feature unless you know what you are doing.
+**You shouldn't enable this feature unless you know what you are doing.**
 
 ---
 
 ## License
-This project is licensed under the AGPL-3.0 License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the AGPL-3.0 License. See the [LICENSE](LICENSE.txt) file for details.
