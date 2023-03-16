@@ -47,6 +47,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: schemsearch-cli-${{ matrix.os }}.tar.gz
+          asset_path: schemsearch-cli-${{ matrix.os }}.zip
           asset_name: schemsearch-cli-${{ matrix.os }}.zip
           asset_content_type: application/zip
