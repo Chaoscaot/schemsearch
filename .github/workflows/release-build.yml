@@ -23,7 +23,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:
-          upload_url: ${{ steps.published_release.outputs.upload_url }}
+          upload_url: ${{ github.event.release.upload_url }}
           asset_path: schemsearch-cli.tar.gz
           asset_name: schemsearch-cli-linux.tar.gz
           asset_content_type: application/gzip
