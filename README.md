@@ -40,6 +40,16 @@ schemsearch-cli --help
 
 ---
 
+## Roadmap
+
+- [ ] Tile entities search
+- [ ] Entities search
+- [ ] Better error handling
+- [ ] Web interface
+- [ ] McEdit search
+
+---
+
 ## Building
 This project is build using Rust for the CLI and library. It can be built using Cargo.
 ```bash
