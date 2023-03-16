@@ -23,7 +23,7 @@ jobs:
         run: cargo build --verbose --release
       - name: Create Tarball
         if: ${{ matrix.os != 'windows-latest' }}
-        run: tar -czvf schemsearch-cli.tar.gz -C target/release schemsearch-cli
+        run: tar -czvf schemsearch-cli.tar.gz -C target/release/schemsearch-cli
       - name: upload linux/darwin artifact
         if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-release-asset@v1
@@ -47,6 +47,6 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: schemsearch-cli-${{ matrix.os }}.zip
+          asset_path: schemsearch-cli.tar.gz
           asset_name: schemsearch-cli-${{ matrix.os }}.zip
           asset_content_type: application/zip
