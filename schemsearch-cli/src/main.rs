@@ -22,7 +22,6 @@ use std::fs::File;
 use std::io;
 use std::io::{BufWriter, Write};
 use clap::{command, Arg, ArgAction, ValueHint};
-use schemsearch_files::Schematic;
 use std::path::PathBuf;
 use clap::error::ErrorKind;
 use schemsearch_lib::{search, SearchBehavior};
@@ -37,7 +36,7 @@ use schemsearch_sql::filter::SchematicFilter;
 use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
 use crate::types::SqlSchematicSupplier;
-use indicatif::{ProgressBar, ParallelProgressIterator, ProgressStyle};
+use indicatif::{ParallelProgressIterator, ProgressStyle};
 
 fn main() {
     #[allow(unused_mut)]

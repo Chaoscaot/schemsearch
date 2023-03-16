@@ -2,7 +2,7 @@
 members = [
     "schemsearch-cli",
     "schemsearch-lib",
-    "schemsearch_faster",
+    "schemsearch-faster",
     "schemsearch-files",
     "schemsearch-sql",
     "schemsearch-java"
