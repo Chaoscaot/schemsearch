@@ -16,16 +16,35 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+      - name: Cache Cargo modules
+        id: cache-cargo
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-cargo-target-debug
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.cache-name }}-
       - name: Build
         run: cargo build --verbose
       - name: Run tests
         run: cargo test --verbose -p schemsearch-lib
+
   build-release:
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
+      - name: Cache Cargo modules
+        id: cache-cargo
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-cargo-target-release
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.cache-name }}-
       - name: Build
         run: cargo build --verbose --release -p schemsearch-cli
       - name: Upload a Build Artifact
