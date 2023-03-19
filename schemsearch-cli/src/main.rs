@@ -271,9 +271,7 @@ fn main() {
                         }
                     }
                     Err(e) => {
-                        if !output_std && !output_std_csv {
-                            println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
-                        }
+                        println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
                         SearchResult {
                             name: schem.get_name(),
                             matches: vec![]
