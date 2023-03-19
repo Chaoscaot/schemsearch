@@ -16,13 +16,14 @@
  */
 
 mod types;
+mod json_output;
+mod sinks;
 
 use std::fmt::Debug;
-use std::fs::File;
-use std::io;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 use clap::{command, Arg, ArgAction, ValueHint};
 use std::path::PathBuf;
+use std::str::FromStr;
 use clap::error::ErrorKind;
 use schemsearch_lib::{search, SearchBehavior};
 use crate::types::{PathSchematicSupplier, SchematicSupplierType};
@@ -38,6 +39,7 @@ use schemsearch_sql::load_all_schematics;
 use crate::types::SqlSchematicSupplier;
 use indicatif::{ParallelProgressIterator, ProgressStyle};
 use schemsearch_files::Schematic;
+use crate::sinks::{OutputFormat, OutputSink};
 
 fn main() {
     #[allow(unused_mut)]
@@ -92,20 +94,32 @@ fn main() {
         )
         .arg(
             Arg::new("output")
-                .help("The output format")
+                .help("The output format and path [Format:Path] available formats: text, json, csv; available paths: std, (file path)")
                 .short('o')
                 .long("output")
                 .action(ArgAction::Append)
-                .default_value("std")
-                .value_parser(["std_csv", "file_csv", "std", "file"]),
-        )
-        .arg(
-            Arg::new("output-file")
-                .help("The output file")
-                .short('O')
-                .long("output-file")
-                .value_hint(ValueHint::FilePath)
-                .action(ArgAction::Append)
+                .default_value("text:std")
+                .value_parser(|s: &str| {
+                    let mut split = s.splitn(2, ':');
+                    let format = match split.next() {
+                        None => return Err("No format specified".to_string()),
+                        Some(x) => x
+                    };
+                    let path = match split.next() {
+                        None => return Err("No path specified".to_string()),
+                        Some(x) => x
+                    };
+                    let format = match OutputFormat::from_str(format) {
+                        Ok(x) => x,
+                        Err(e) => return Err(e.to_string()),
+                    };
+                    let path = match OutputSink::from_str(path) {
+                        Ok(x) => x,
+                        Err(e) => return Err(e.to_string()),
+                    };
+
+                    Ok((format, path))
+                }),
         )
         .arg(
             Arg::new("threshold")
@@ -223,52 +237,26 @@ fn main() {
         cmd.error(ErrorKind::MissingRequiredArgument, "No schematics specified").exit();
     }
 
-    let mut output_std = false;
-    let mut output_std_csv = false;
-    let mut output_file_csv = false;
-    let mut output_file = false;
+    let output: Vec<&(OutputFormat, OutputSink)> = matches.get_many::<(OutputFormat, OutputSink)>("output").expect("Error").collect();
+    let mut output: Vec<(OutputFormat, Box<dyn Write>)> = output.into_iter().map(|x| (x.0.clone(), x.1.output())).collect();
 
-    for x in matches.get_many::<String>("output").expect("Couldn't get output") {
-        match x.as_str() {
-            "std" => output_std = true,
-            "std_csv" => output_std_csv = true,
-            "file_csv" => output_file_csv = true,
-            "file" => output_file = true,
-            _ => {}
-        }
-    };
-    let file: Option<File>;
-    let mut file_out: Option<BufWriter<File>> = None;
-
-    if output_file || output_file_csv {
-        let output_file_path = match matches.get_one::<String>("output-file") {
-            None => {
-                cmd.error(ErrorKind::MissingRequiredArgument, "No output file specified").exit();
-            }
-            Some(x) => x
-        };
-
-        file = match File::create(output_file_path) {
-            Ok(x) => Some(x),
-            Err(e) => {
-                cmd.error(ErrorKind::Io, format!("Error while creating output file: {}", e.to_string())).exit();
-            }
-        };
-        file_out = Some(BufWriter::new(file.unwrap()));
+    for x in &mut output {
+        write!(x.1, "{}", x.0.start(schematics.len() as u32, &search_behavior, start.elapsed().as_millis())).unwrap();
     }
+
     ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    let matches: Vec<Result> = schematics.par_iter().progress_with_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap()).map(|schem| {
+    let matches: Vec<SearchResult> = schematics.par_iter().progress_with_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap()).map(|schem| {
         match schem {
             SchematicSupplierType::PATH(schem) => {
                 let schematic = match load_schem(&schem.path) {
                     Some(x) => x,
-                    None => return Result {
+                    None => return SearchResult {
                         name: schem.get_name(),
                         matches: vec![]
                     }
                 };
-                Result {
+                SearchResult {
                     name: schem.get_name(),
                     matches: search(schematic, &pattern, search_behavior)
                 }
@@ -277,7 +265,7 @@ fn main() {
             SchematicSupplierType::SQL(schem) => {
                 match schem.get_schematic() {
                     Ok(schematic) => {
-                        Result {
+                        SearchResult {
                             name: schem.get_name(),
                             matches: search(schematic, &pattern, search_behavior)
                         }
@@ -286,7 +274,7 @@ fn main() {
                         if !output_std && !output_std_csv {
                             println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
                         }
-                        Result {
+                        SearchResult {
                             name: schem.get_name(),
                             matches: vec![]
                         }
@@ -296,30 +284,21 @@ fn main() {
         }
     }).collect();
 
-    let stdout = io::stdout();
-    let mut lock = stdout.lock();
-
     for matching in matches {
         let schem_name = matching.name;
         let matching = matching.matches;
         for x in matching {
-            if output_std {
-                writeln!(lock, "Found match in '{}' at x: {}, y: {}, z: {}, % = {}", schem_name, x.0, x.1, x.2, x.3).unwrap();
-            }
-            if output_std_csv {
-                writeln!(lock, "{},{},{},{},{}", schem_name, x.0, x.1, x.2, x.3).unwrap();
-            }
-            if output_file {
-                writeln!(file_out.as_mut().unwrap(), "Found match in '{}' at x: {}, y: {}, z: {}, % = {}", schem_name, x.0, x.1, x.2, x.3).unwrap();
-            }
-            if output_file_csv {
-                writeln!(file_out.as_mut().unwrap(), "{},{},{},{},{}", schem_name, x.0, x.1, x.2, x.3).unwrap();
+            for out in &mut output {
+                write!(out.1, "{}", out.0.found_match(&schem_name, x)).unwrap();
             }
         }
     }
 
     let end = std::time::Instant::now();
-    println!("Finished in {:.2}s! Searched in {} Schematics", end.duration_since(start).as_secs_f32(), schematics.len());
+    for x in &mut output {
+        write!(x.1, "{}", x.0.end(end.duration_since(start).as_millis())).unwrap();
+        x.1.flush().unwrap();
+    }
 }
 
 fn load_schem(schem_path: &PathBuf) -> Option<Schematic> {
@@ -333,7 +312,7 @@ fn load_schem(schem_path: &PathBuf) -> Option<Schematic> {
 }
 
 #[derive(Debug, Clone)]
-struct Result {
+struct SearchResult {
     name: String,
     matches: Vec<(u16, u16, u16, f32)>,
 }

@@ -17,11 +17,12 @@
 
 pub mod pattern_mapper;
 
+use serde::{Deserialize, Serialize};
 use pattern_mapper::match_palette;
 use schemsearch_files::Schematic;
 use crate::pattern_mapper::match_palette_adapt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct SearchBehavior {
     pub ignore_block_data: bool,
     pub ignore_block_entities: bool,

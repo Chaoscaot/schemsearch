@@ -16,7 +16,7 @@
  */
 
 use std::sync::Mutex;
-use sqlx::{ConnectOptions, Executor, MySql, MySqlPool, Pool, Row};
+use sqlx::{Executor, MySql, Pool, Row};
 use sqlx::mysql::{MySqlConnectOptions, MySqlPoolOptions};
 use crate::filter::SchematicFilter;
 
