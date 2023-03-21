@@ -25,11 +25,26 @@ use crate::pattern_mapper::match_palette_adapt;
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct SearchBehavior {
     pub ignore_block_data: bool,
-    pub ignore_block_entities: bool,
+    pub ignore_tile_entities: bool,
+    pub ignore_tile_entity_data: bool,
     pub ignore_air: bool,
     pub air_as_any: bool,
     pub ignore_entities: bool,
     pub threshold: f32,
+}
+
+impl Default for SearchBehavior {
+    fn default() -> Self {
+        SearchBehavior {
+            ignore_block_data: true,
+            ignore_tile_entities: true,
+            ignore_tile_entity_data: false,
+            ignore_entities: true,
+            ignore_air: false,
+            air_as_any: false,
+            threshold: 90.0,
+        }
+    }
 }
 
 pub fn search(
@@ -61,7 +76,7 @@ pub fn search(
 
     let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
-    let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f32;
+    let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f32 + if search_behavior.ignore_tile_entities { 0.0 } else { pattern_schem.block_entities.len() as f32 };
 
     let pattern_width = pattern_schem.width as usize;
     let pattern_height = pattern_schem.height as usize;
@@ -88,6 +103,26 @@ pub fn search(
                         }
                     }
                 }
+                if !search_behavior.ignore_tile_entities {
+                    for tile_entity in &pattern_schem.block_entities {
+                        for entry in &schem.block_entities {
+                            if tile_entity.id.as_str() == entry.id.as_str() {
+                                let pos = tile_entity.pos;
+                                let schem_pos = [pos[0] + x as i32, pos[1] + y as i32, pos[2] + z as i32];
+                                if schem_pos == entry.pos {
+                                    if search_behavior.ignore_tile_entity_data {
+                                        matching += 1;
+                                    } else {
+                                        if tile_entity.data == entry.data {
+                                            matching += 1;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 let matching_percent = matching as f32 / pattern_blocks;
                 if matching_percent >= search_behavior.threshold {
                     matches.push((x as u16, y as u16, z as u16, matching_percent));
@@ -170,14 +205,7 @@ mod tests {
         let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
-        let _ = search(schematic, &endstone, SearchBehavior {
-            ignore_block_data: true,
-            ignore_block_entities: true,
-            ignore_entities: true,
-            ignore_air: false,
-            air_as_any: false,
-            threshold: 0.9
-        });
+        let _ = search(schematic, &endstone, SearchBehavior::default());
     }
 
     #[test]
@@ -185,14 +213,7 @@ mod tests {
         let schematic = Schematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
         let pattern = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
 
-        let matches = search(schematic, &pattern, SearchBehavior {
-            ignore_block_data: true,
-            ignore_block_entities: true,
-            ignore_entities: true,
-            ignore_air: false,
-            air_as_any: false,
-            threshold: 0.9
-        });
+        let matches = search(schematic, &pattern, SearchBehavior::default());
 
         println!("{:?}", matches);
         assert_eq!(matches.len(), 1);
@@ -204,14 +225,7 @@ mod tests {
         let schematic = Schematic::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
         let pattern = Schematic::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
 
-        let matches = search(schematic, &pattern, SearchBehavior {
-            ignore_block_data: false,
-            ignore_block_entities: false,
-            ignore_entities: false,
-            ignore_air: false,
-            air_as_any: false,
-            threshold: 0.9
-        });
+        let matches = search(schematic, &pattern, SearchBehavior::default());
 
         println!("{:?}", matches);
         assert_eq!(matches.len(), 1);

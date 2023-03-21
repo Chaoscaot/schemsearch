@@ -62,6 +62,9 @@ pub struct BlockEntity {
     pub id: String,
     #[serde(rename = "Pos")]
     pub pos: [i32; 3],
+
+    #[serde(flatten)]
+    pub data: Map<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -70,6 +73,9 @@ pub struct Entity {
     pub id: String,
     #[serde(rename = "Pos")]
     pub pos: [i32; 3],
+
+    #[serde(flatten)]
+    pub data: Map<String, Value>,
 }
 
 impl Schematic {

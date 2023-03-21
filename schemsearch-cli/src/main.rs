@@ -65,10 +65,17 @@ fn main() {
                 .action(ArgAction::SetTrue),
         )
         .arg(
-            Arg::new("ignore-block-entities")
-                .help("Ignores block entities when searching [Not Implemented]")
+            Arg::new("ignore-tile-entities")
+                .help("Ignores tile entities when searching [Not Implemented]")
                 .short('b')
-                .long("ignore-block-entities")
+                .long("ignore-tile-entities")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("ignore-tile-entity-data")
+                .help("Ignores tile entity data when searching [Not Implemented]")
+                .short('B')
+                .long("ignore-tile-entity-data")
                 .action(ArgAction::SetTrue),
         )
         .arg(
@@ -179,7 +186,8 @@ fn main() {
 
     let search_behavior = SearchBehavior {
         ignore_block_data: matches.get_flag("ignore-data"),
-        ignore_block_entities: matches.get_flag("ignore-block-entities"),
+        ignore_tile_entities: matches.get_flag("ignore-tile-entities"),
+        ignore_tile_entity_data: matches.get_flag("ignore-tile-entity-data"),
         ignore_air: matches.get_flag("ignore-air"),
         air_as_any: matches.get_flag("air-as-any"),
         ignore_entities: matches.get_flag("ignore-entities"),

@@ -35,14 +35,7 @@ pub extern "system" fn Java_SchemSearch_search<'local>(mut env: JNIEnv<'local>,
     let schematic = Schematic::load(&PathBuf::from(&schematic_path)).unwrap();
     let pattern = Schematic::load(&PathBuf::from(&pattern_path)).unwrap();
 
-    let matches = search(schematic, &pattern, SearchBehavior {
-        ignore_block_data: true,
-        ignore_block_entities: true,
-        ignore_entities: true,
-        ignore_air: false,
-        air_as_any: false,
-        threshold: 0.0,
-    });
+    let matches = search(schematic, &pattern, SearchBehavior::default());
 
     let mut result = String::new();
     for (x, y, z, p) in matches {

@@ -18,7 +18,6 @@
 use std::path::PathBuf;
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
-use schemsearch_files::Schematic;
 #[cfg(feature = "sql")]
 use schemsearch_sql::{load_schemdata, SchematicNode};
 
