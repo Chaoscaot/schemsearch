@@ -94,7 +94,7 @@ fn main() {
         )
         .arg(
             Arg::new("output")
-                .help("The output format and path [Format:Path] available formats: text, json, csv; available paths: std, (file path)")
+                .help("The output format and path [Format:Path] available formats: text, json, csv; available paths: std, err, (file path)")
                 .short('o')
                 .long("output")
                 .action(ArgAction::Append)
@@ -246,7 +246,11 @@ fn main() {
 
     ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    let matches: Vec<SearchResult> = schematics.par_iter().progress_with_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap()).map(|schem| {
+    let bar = ProgressBar::new(schematics.len() as u64);
+    bar.set_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap());
+    bar.set_draw_target(ProgressDrawTarget::stderr_with_hz(5));
+
+    let matches: Vec<SearchResult> = schematics.par_iter().progress_with(bar).map(|schem| {
         match schem {
             SchematicSupplierType::PATH(schem) => {
                 let schematic = match load_schem(&schem.path) {
@@ -271,7 +275,7 @@ fn main() {
                         }
                     }
                     Err(e) => {
-                        println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
+                        eprintln!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
                         SearchResult {
                             name: schem.get_name(),
                             matches: Vec::default()

@@ -2,12 +2,15 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::str::FromStr;
 use std::io::Write;
+use std::time::Duration;
+use indicatif::HumanDuration;
 use schemsearch_lib::{Match, SearchBehavior};
 use crate::json_output::{EndEvent, FoundEvent, InitEvent, JsonEvent};
 
 #[derive(Debug, Clone)]
 pub enum OutputSink {
     Stdout,
+    Stderr,
     File(String),
 }
 
@@ -37,6 +40,7 @@ impl FromStr for OutputSink {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "std" => Ok(OutputSink::Stdout),
+            "err" => OK(OutputSink::Stderr),
             _ => Ok(OutputSink::File(s.to_string()))
         }
     }
@@ -46,6 +50,7 @@ impl OutputSink {
     pub fn output(&self) -> Box<dyn Write> {
         match self {
             OutputSink::Stdout => Box::new(std::io::stdout().lock()),
+            OutputSink::Stderr => Box::new(std::io::stderr().lock()),
             OutputSink::File(path) => Box::new(BufWriter::new(File::create(path).unwrap()))
         }
     }
@@ -77,7 +82,7 @@ impl OutputFormat {
 
     pub fn end(&self, end_time: u128) -> String {
         match self {
-            OutputFormat::Text => format!("Search complete in {}s\n", end_time / 1000),
+            OutputFormat::Text => format!("Search complete in {}\n", HumanDuration(Duration::from_millis(end_time as u64))),
             OutputFormat::CSV => format!("{}\n", end_time),
             OutputFormat::JSON => format!("{}\n", serde_json::to_string(&JsonEvent::End(EndEvent{ end_time })).unwrap())
         }
