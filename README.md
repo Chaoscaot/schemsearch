@@ -4,12 +4,12 @@
 ---
 
 ## WARNING: This is a work in progress and is really simple right now. It will be improved in the future.
-| Feature                | Status |
-|------------------------|--------|
-| Block search           | ✅      |
-| Block data less search | ✅      |
-| Tile entities search   | ❌      |
-| Entities search        | ❌      |
+| Feature                   | Status |
+|---------------------------|--------|
+| Block search              | ✅      |
+| Block data less search    | ✅      |
+| Tile entities data search | ❌      |
+| Entities search           | ❌      |
 
 ---
 
@@ -41,12 +41,13 @@ schemsearch-cli --help
 ---
 
 ## Roadmap
+A list of features that are planned to be implemented in the future. In order of priority.
 
-- [ ] Tile entities search
+- [ ] Full JSON output (Progressbar)
+- [ ] Use AVX2 for faster search
+- [ ] Tile entities data search
 - [ ] Entities search
-- [ ] Better error handling
-- [ ] Web interface
-- [ ] McEdit search
+- [ ] McEdit Schematic support
 
 ---
 
