@@ -45,8 +45,8 @@ pub extern "system" fn Java_SchemSearch_search<'local>(mut env: JNIEnv<'local>,
     });
 
     let mut result = String::new();
-    for (x, y, z, p) in matches {
-        result.push_str(&format!("{}, {}, {}, {};", x, y, z, p));
+    for m in matches {
+        result.push_str(&format!("{}, {}, {}, {};", m.x, m.y, m.z, m.percent));
     }
     result.remove(result.len() - 1);
     let output = env.new_string(result).expect("Couldn't create java string!");

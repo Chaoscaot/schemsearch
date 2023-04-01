@@ -36,7 +36,7 @@ pub fn search(
     schem: Schematic,
     pattern_schem: &Schematic,
     search_behavior: SearchBehavior,
-) -> Vec<(u16, u16, u16, f32)> {
+) -> Vec<Match> {
     if schem.width < pattern_schem.width || schem.height < pattern_schem.height || schem.length < pattern_schem.length {
         return vec![];
     }
@@ -47,7 +47,7 @@ pub fn search(
 
     let pattern_schem = match_palette(&schem, &pattern_schem, search_behavior.ignore_block_data);
 
-    let mut matches: Vec<(u16, u16, u16, f32)> = Vec::new();
+    let mut matches: Vec<Match> = Vec::new();
 
     let pattern_data = pattern_schem.block_data.as_slice();
 
@@ -90,13 +90,37 @@ pub fn search(
                 }
                 let matching_percent = matching as f32 / pattern_blocks;
                 if matching_percent >= search_behavior.threshold {
-                    matches.push((x as u16, y as u16, z as u16, matching_percent));
+                    matches.push(Match {
+                        x: x as u16,
+                        y: y as u16,
+                        z: z as u16,
+                        percent: matching_percent,
+                    });
                 }
             }
         }
     }
 
     return matches;
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct Match {
+    pub x: u16,
+    pub y: u16,
+    pub z: u16,
+    pub percent: f32,
+}
+
+impl Default for Match {
+    fn default() -> Self {
+        Self {
+            x: 0,
+            y: 0,
+            z: 0,
+            percent: 0.0,
+        }
+    }
 }
 
 #[inline]

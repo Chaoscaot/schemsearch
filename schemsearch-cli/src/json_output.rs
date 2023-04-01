@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use schemsearch_lib::SearchBehavior;
+use schemsearch_lib::{Match, SearchBehavior};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "event")]
@@ -12,10 +12,8 @@ pub enum JsonEvent {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FoundEvent {
     pub name: String,
-    pub x: u16,
-    pub y: u16,
-    pub z: u16,
-    pub percent: f32,
+    #[serde(flatten, rename = "match")]
+    pub match_: Match,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

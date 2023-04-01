@@ -25,7 +25,7 @@ use clap::{command, Arg, ArgAction, ValueHint};
 use std::path::PathBuf;
 use std::str::FromStr;
 use clap::error::ErrorKind;
-use schemsearch_lib::{search, SearchBehavior};
+use schemsearch_lib::{Match, search, SearchBehavior};
 use crate::types::{PathSchematicSupplier, SchematicSupplierType};
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
@@ -37,7 +37,7 @@ use schemsearch_sql::filter::SchematicFilter;
 use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
 use crate::types::SqlSchematicSupplier;
-use indicatif::{ParallelProgressIterator, ProgressStyle};
+use indicatif::*;
 use schemsearch_files::Schematic;
 use crate::sinks::{OutputFormat, OutputSink};
 
@@ -253,7 +253,7 @@ fn main() {
                     Some(x) => x,
                     None => return SearchResult {
                         name: schem.get_name(),
-                        matches: vec![]
+                        matches: Vec::default()
                     }
                 };
                 SearchResult {
@@ -274,7 +274,7 @@ fn main() {
                         println!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
                         SearchResult {
                             name: schem.get_name(),
-                            matches: vec![]
+                            matches: Vec::default()
                         }
                     }
                 }
@@ -312,6 +312,6 @@ fn load_schem(schem_path: &PathBuf) -> Option<Schematic> {
 #[derive(Debug, Clone)]
 struct SearchResult {
     name: String,
-    matches: Vec<(u16, u16, u16, f32)>,
+    matches: Vec<Match>,
 }
 

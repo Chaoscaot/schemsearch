@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::str::FromStr;
 use std::io::Write;
-use schemsearch_lib::SearchBehavior;
+use schemsearch_lib::{Match, SearchBehavior};
 use crate::json_output::{EndEvent, FoundEvent, InitEvent, JsonEvent};
 
 #[derive(Debug, Clone)]
@@ -52,16 +52,13 @@ impl OutputSink {
 }
 
 impl OutputFormat {
-    pub fn found_match(&self, name: &String, pos: (u16, u16, u16, f32)) -> String {
+    pub fn found_match(&self, name: &String, pos: Match) -> String {
         match self {
-            OutputFormat::Text => format!("Found match in '{}' at x: {}, y: {}, z: {}, % = {}\n", name, pos.0, pos.1, pos.2, pos.3),
-            OutputFormat::CSV => format!("{},{},{},{},{}\n", name, pos.0, pos.1, pos.2, pos.3),
+            OutputFormat::Text => format!("Found match in '{}' at x: {}, y: {}, z: {}, % = {}\n", name, pos.x, pos.y, pos.z, pos.percent),
+            OutputFormat::CSV => format!("{},{},{},{},{}\n", name, pos.x, pos.y, pos.z, pos.percent),
             OutputFormat::JSON => format!("{}\n", serde_json::to_string(&JsonEvent::Found(FoundEvent {
                 name: name.clone(),
-                x: pos.0,
-                y: pos.1,
-                z: pos.2,
-                percent: pos.3,
+                match_: pos,
             })).unwrap())
         }
     }
