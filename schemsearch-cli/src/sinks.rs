@@ -40,7 +40,7 @@ impl FromStr for OutputSink {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "std" => Ok(OutputSink::Stdout),
-            "err" => OK(OutputSink::Stderr),
+            "err" => Ok(OutputSink::Stderr),
             _ => Ok(OutputSink::File(s.to_string()))
         }
     }

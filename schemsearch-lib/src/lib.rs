@@ -220,7 +220,7 @@ mod tests {
 
         println!("{:?}", matches);
         assert_eq!(matches.len(), 1);
-        assert_eq!(matches[0], (1, 0, 3, 1.0));
+        assert_eq!(matches[0], Match { x: 1, y: 0, z: 3, percent: 1.0});
     }
 
     #[test]
