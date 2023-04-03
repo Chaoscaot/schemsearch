@@ -27,7 +27,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ env.cache-name }}-
       - name: Build
-        run: cargo build --verbose
+        run: make debug
       - name: Run tests
         run: cargo test --verbose -p schemsearch-lib
 
@@ -46,7 +46,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ env.cache-name }}-
       - name: Build
-        run: cargo build --verbose --release -p schemsearch-cli
+        run: make
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v3.1.2
         with:
