@@ -18,6 +18,7 @@
 mod types;
 mod json_output;
 mod sinks;
+mod stderr;
 
 use std::fmt::Debug;
 use std::io::Write;
@@ -40,6 +41,7 @@ use crate::types::SqlSchematicSupplier;
 use indicatif::*;
 use schemsearch_files::Schematic;
 use crate::sinks::{OutputFormat, OutputSink};
+use crate::stderr::MaschineStdErr;
 
 fn main() {
     #[allow(unused_mut)]
@@ -138,6 +140,15 @@ fn main() {
                 .action(ArgAction::Set)
                 .default_value("0")
                 .value_parser(|s: &str| s.parse::<usize>().map_err(|e| e.to_string())),
+        )
+        .arg(
+            Arg::new("machine")
+                .help("Output for machines")
+                .short('m')
+                .long("machine")
+                .action(ArgAction::Set)
+                .default_value("0")
+                .value_parser(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()))
         )
         .about("Searches for a pattern in a schematic")
         .bin_name("schemsearch");
@@ -246,9 +257,12 @@ fn main() {
 
     ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    let bar = ProgressBar::new(schematics.len() as u64);
+    let bar = ProgressBar::new(schematics.len() as u64); // "maschine"
     bar.set_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap());
-    //bar.set_draw_target(ProgressDrawTarget::stderr_with_hz(5));
+    let term_size = *matches.get_one::<u16>("machine").expect("Could not get machine");
+    if term_size != 0 {
+        bar.set_draw_target(ProgressDrawTarget::term_like(Box::new(MaschineStdErr { size: term_size })))
+    }
 
     let matches: Vec<SearchResult> = schematics.par_iter().progress_with(bar).map(|schem| {
         match schem {

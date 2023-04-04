@@ -49,8 +49,8 @@ impl FromStr for OutputSink {
 impl OutputSink {
     pub fn output(&self) -> Box<dyn Write> {
         match self {
-            OutputSink::Stdout => Box::new(std::io::stdout().lock()),
-            OutputSink::Stderr => Box::new(std::io::stderr().lock()),
+            OutputSink::Stdout => Box::new(std::io::stdout()),
+            OutputSink::Stderr => Box::new(std::io::stderr()),
             OutputSink::File(path) => Box::new(BufWriter::new(File::create(path).unwrap()))
         }
     }
