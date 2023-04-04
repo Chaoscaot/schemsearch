@@ -61,7 +61,7 @@ pub fn search(
 
     let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
-    let pattern_blocks = (pattern_schem.width * pattern_schem.height * pattern_schem.length) as f32;
+    let pattern_blocks = pattern_data.len() as f32;
 
     let pattern_width = pattern_schem.width as usize;
     let pattern_height = pattern_schem.height as usize;
