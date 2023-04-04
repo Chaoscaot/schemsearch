@@ -16,10 +16,10 @@
  */
 
 use nbt::Map;
-use schemsearch_files::Schematic;
+use schemsearch_files::SpongeV2Schematic;
 use crate::normalize_data;
 
-fn create_reverse_palette(schem: &Schematic) -> Vec<&str> {
+fn create_reverse_palette(schem: &SpongeV2Schematic) -> Vec<&str> {
     let mut reverse_palette = Vec::with_capacity(schem.palette_max as usize);
     (0..schem.palette_max).for_each(|_| reverse_palette.push(""));
     for (key, value) in schem.palette.iter() {
@@ -28,7 +28,7 @@ fn create_reverse_palette(schem: &Schematic) -> Vec<&str> {
     reverse_palette
 }
 
-pub fn strip_data(schem: &Schematic) -> Schematic {
+pub fn strip_data(schem: &SpongeV2Schematic) -> SpongeV2Schematic {
     let mut data: Vec<i32> = Vec::new();
 
     let mut palette: Map<String, i32> = Map::new();
@@ -47,7 +47,7 @@ pub fn strip_data(schem: &Schematic) -> Schematic {
         data.push(*entry);
     }
 
-    Schematic {
+    SpongeV2Schematic {
         version: schem.version,
         data_version: schem.data_version,
         palette,
@@ -63,7 +63,7 @@ pub fn strip_data(schem: &Schematic) -> Schematic {
     }
 }
 
-pub fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32>, ignore_data: bool) -> Vec<i32> {
+pub fn match_palette_adapt(schem: &SpongeV2Schematic, matching_palette: &Map<String, i32>, ignore_data: bool) -> Vec<i32> {
     let mut data: Vec<i32> = Vec::new();
     let reverse_palette = create_reverse_palette(schem);
 
@@ -81,10 +81,10 @@ pub fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32
 }
 
 pub fn match_palette(
-    schem: &Schematic,
-    pattern: &Schematic,
+    schem: &SpongeV2Schematic,
+    pattern: &SpongeV2Schematic,
     ignore_data: bool,
-) -> Schematic {
+) -> SpongeV2Schematic {
     if ignore_data {
         match_palette_internal(&strip_data(schem), &strip_data(pattern), ignore_data)
     } else {
@@ -93,13 +93,13 @@ pub fn match_palette(
 }
 
 fn match_palette_internal(
-    schem: &Schematic,
-    pattern: &Schematic,
+    schem: &SpongeV2Schematic,
+    pattern: &SpongeV2Schematic,
     ignore_data: bool,
-) -> Schematic {
+) -> SpongeV2Schematic {
     let data_pattern: Vec<i32> = match_palette_adapt(&pattern, &schem.palette, ignore_data);
 
-    Schematic {
+    SpongeV2Schematic {
         version: pattern.version.clone(),
         data_version: pattern.data_version.clone(),
         palette: schem.palette.clone(),

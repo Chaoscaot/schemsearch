@@ -19,7 +19,7 @@ use std::path::PathBuf;
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
 #[allow(unused_imports)]
-use schemsearch_files::Schematic;
+use schemsearch_files::SpongeV2Schematic;
 #[cfg(feature = "sql")]
 use schemsearch_sql::{load_schemdata, SchematicNode};
 
@@ -46,9 +46,9 @@ pub struct SqlSchematicSupplier {
 
 #[cfg(feature = "sql")]
 impl SqlSchematicSupplier {
-    pub fn get_schematic(&self) -> Result<Schematic, String> {
+    pub fn get_schematic(&self) -> Result<SchematicVersioned, String> {
         let schemdata = block_on(load_schemdata(self.node.id));
-        Schematic::load_data(schemdata.as_slice())
+        SchematicVersioned::load_data(schemdata.as_slice())
     }
 
     pub fn get_name(&self) -> String {

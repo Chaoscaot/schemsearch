@@ -16,9 +16,9 @@
  */
 
 use nbt::Map;
-use schemsearch_files::Schematic;
+use schemsearch_files::SpongeV2Schematic;
 
-pub fn convert_to_search_space(schem: &Schematic, palette: &Vec<String>) -> Vec<Vec<u8>> {
+pub fn convert_to_search_space(schem: &SpongeV2Schematic, palette: &Vec<String>) -> Vec<Vec<u8>> {
     let mut data: Vec<Vec<u8>> = Vec::with_capacity(palette.len());
     let block_data = &schem.block_data;
     for name in palette {
@@ -48,26 +48,26 @@ pub fn unwrap_palette(palette: &Map<String, i32>) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
-    use schemsearch_files::Schematic;
+    use schemsearch_files::SpongeV2Schematic;
     use crate::{convert_to_search_space, unwrap_palette};
 
     //#[test]
     pub fn test() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
+        let schematic = SpongeV2Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
         dbg!(convert_to_search_space(&schematic, &unwrap_palette(&schematic.palette)));
     }
 
     //#[test]
     pub fn test_2() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
-        let schematic2 = Schematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
+        let schematic = SpongeV2Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
+        let schematic2 = SpongeV2Schematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
         println!("{:?}", convert_to_search_space(&schematic2, &unwrap_palette(&schematic.palette)));
     }
 
     //#[test]
     pub fn test_big() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
-        let schematic2 = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let schematic = SpongeV2Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic2 = SpongeV2Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let _ = convert_to_search_space(&schematic2, &unwrap_palette(&schematic.palette));
     }
 }

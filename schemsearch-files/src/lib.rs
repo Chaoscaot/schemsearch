@@ -17,34 +17,50 @@
 
 use std::io::Read;
 use std::path::PathBuf;
-use nbt::{Map, Value};
-use serde::{Deserialize, Deserializer, Serialize};
+use nbt::{Error, from_gzip_reader, Map, Value};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde_this_or_that::as_i64;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Schematic {
-    #[serde(rename = "Version")]
+#[serde(untagged)]
+pub enum SchematicVersioned {
+    V1,
+    V2(SpongeV2Schematic),
+    V3(SpongeV3Schematic),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct SpongeV2Schematic {
     pub version: i32,
-    #[serde(rename = "DataVersion")]
     pub data_version: i32,
-    #[serde(rename = "Metadata")]
     pub metadata: Map<String, Value>,
-    #[serde(rename = "Width")]
     pub width: u16,
-    #[serde(rename = "Height")]
     pub height: u16,
-    #[serde(rename = "Length")]
     pub length: u16,
-    #[serde(rename = "Offset")]
     pub offset: [i32; 3],
-    #[serde(rename = "PaletteMax")]
     pub palette_max: i32,
-    #[serde(rename = "Palette")]
     pub palette: Map<String, i32>,
-    #[serde(rename = "BlockData", deserialize_with = "read_blockdata")]
+    #[serde(deserialize_with = "read_blockdata")]
     pub block_data: Vec<i32>,
-    #[serde(rename = "BlockEntities")]
     pub block_entities: Vec<BlockEntity>,
-    #[serde(rename = "Entities")]
+    pub entities: Option<Vec<Entity>>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct SpongeV3Schematic {
+    pub data_version: i32,
+    pub metadata: Map<String, Value>,
+    pub width: u16,
+    pub height: u16,
+    pub length: u16,
+    pub offset: [i32; 3],
+    pub palette_max: i32,
+    pub palette: Map<String, i32>,
+    #[serde(deserialize_with = "read_blockdata")]
+    pub block_data: Vec<i32>,
+    pub block_entities: Vec<BlockEntity>,
     pub entities: Option<Vec<Entity>>,
 }
 
@@ -72,21 +88,15 @@ pub struct Entity {
     pub pos: [i32; 3],
 }
 
-impl Schematic {
-    pub fn load_data<R>(data: R) -> Result<Schematic, String> where R: Read {
-        let schematic: Schematic = match nbt::from_gzip_reader(data) {
-            Ok(schem) => schem,
-            Err(e) => return Err(format!("Failed to parse schematic: {}", e))
-        };
+impl SchematicVersioned {
+    pub fn load_data<R>(data: R) -> Result<SchematicVersioned, Error> where R: Read {
+        let schematic: SchematicVersioned = from_gzip_reader(data)?;
         Ok(schematic)
     }
 
-    pub fn load(path: &PathBuf) -> Result<Schematic, String> {
-        let file = match std::fs::File::open(path) {
-            Ok(x) => x,
-            Err(_) => return Err(format!("Failed to open file: {}", path.to_str().unwrap()))
-        };
-        Schematic::load_data(file)
+    pub fn load(path: &PathBuf) -> Result<SchematicVersioned, Error> {
+        let file = std::fs::File::open(path)?;
+        Self::load_data(file)
     }
 }
 
