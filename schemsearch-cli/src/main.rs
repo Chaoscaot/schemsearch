@@ -248,7 +248,7 @@ fn main() {
 
     let bar = ProgressBar::new(schematics.len() as u64);
     bar.set_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap());
-    bar.set_draw_target(ProgressDrawTarget::stderr_with_hz(5));
+    //bar.set_draw_target(ProgressDrawTarget::stderr_with_hz(5));
 
     let matches: Vec<SearchResult> = schematics.par_iter().progress_with(bar).map(|schem| {
         match schem {
