@@ -150,6 +150,15 @@ fn main() {
                 .default_value("0")
                 .value_parser(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()))
         )
+        .arg(
+            Arg::new("limit")
+                .help("The maximum number of matches to return [0 = Unlimited]")
+                .short('l')
+                .long("limit")
+                .action(ArgAction::Set)
+                .default_value("50")
+                .value_parser(|s: &str| s.parse::<usize>().map_err(|e| e.to_string())),
+        )
         .about("Searches for a pattern in a schematic")
         .bin_name("schemsearch");
 
@@ -264,6 +273,8 @@ fn main() {
         bar.set_draw_target(ProgressDrawTarget::term_like(Box::new(MaschineStdErr { size: term_size })))
     }
 
+    let max_matching = *matches.get_one::<usize>("limit").expect("Could not get max-matching");
+
     let matches: Vec<SearchResult> = schematics.par_iter().progress_with(bar).map(|schem| {
         match schem {
             SchematicSupplierType::PATH(schem) => {
@@ -300,12 +311,18 @@ fn main() {
         }
     }).collect();
 
-    for matching in matches {
+    let mut matches_count = 0;
+
+    'outer: for matching in matches {
         let schem_name = matching.name;
         let matching = matching.matches;
         for x in matching {
             for out in &mut output {
                 write!(out.1, "{}", out.0.found_match(&schem_name, x)).unwrap();
+            }
+            matches_count += 1;
+            if max_matching != 0 && matches_count >= max_matching {
+                break 'outer;
             }
         }
     }
