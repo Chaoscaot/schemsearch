@@ -10,3 +10,4 @@ license = "AGPL-3.0-or-later"
 hematite-nbt = "0.5.2"
 serde = "1.0.152"
 schemsearch-files = { path = "../schemsearch-files" }
+manual-avx2 = { git = "https://github.com/Chaoscaot/manual-avx2", version = "0.1.0" }

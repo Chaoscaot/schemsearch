@@ -88,6 +88,12 @@ pub fn search(
                         }
                     }
                 }
+
+                for index in (0..schem_data.len()).step_by(8) {
+                    let pattern_data_slice = schem_data[index..index + 8];
+                    let data = manual_avx2::vec_i::VecInteger::new_i32(&(index..index + 8).map(|i| schem_data[i]).collect::<[i32; 8]>());
+                }
+
                 let matching_percent = matching as f32 / pattern_blocks;
                 if matching_percent >= search_behavior.threshold {
                     matches.push(Match {
