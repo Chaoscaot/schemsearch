@@ -19,13 +19,14 @@ jobs:
       - name: Cache Cargo modules
         id: cache-cargo
         uses: actions/cache@v3
-        env:
-          cache-name: cache-cargo-target-debug
+        continue-on-error: false
         with:
-          path: target
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-
+            ${{ runner.os }}-cargo-
       - name: Build
         run: make debug
       - name: Run tests
@@ -38,13 +39,14 @@ jobs:
       - name: Cache Cargo modules
         id: cache-cargo
         uses: actions/cache@v3
-        env:
-          cache-name: cache-cargo-target-release
+        continue-on-error: false
         with:
-          path: target
-          key: ${{ runner.os }}-${{ env.cache-name }}-${{ hashFiles('**/Cargo.lock') }}
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ env.cache-name }}-
+            ${{ runner.os }}-cargo-
       - name: Build
         run: make
       - name: Upload a Build Artifact
