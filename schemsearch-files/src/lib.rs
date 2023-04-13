@@ -18,8 +18,15 @@
 use std::io::Read;
 use std::path::PathBuf;
 use nbt::{Error, from_gzip_reader, Map, Value};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_this_or_that::as_i64;
+use serde::{Deserialize, Deserializer, Serialize};
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+struct SchematicRaw {
+    version: i32,
+    #[serde(flatten)]
+    data: Map<String, Value>,
+}
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(untagged, rename_all = "PascalCase")]
@@ -91,6 +98,26 @@ impl SchematicVersioned {
             SchematicVersioned::V2(schematic) => &schematic.block_entities,
             SchematicVersioned::V3(schematic) => &schematic.blocks.block_entities,
         };
+    }
+}
+
+impl From<SchematicRaw> for SchematicVersioned {
+    fn from(value: SchematicRaw) -> Self {
+        match value.version {
+            1 => {
+                let schematic: SpongeV1Schematic = serde_json::from_value(serde_json::to_value(value.data).unwrap()).unwrap();
+                return SchematicVersioned::V1(schematic);
+            },
+            2 => {
+                let schematic: SpongeV2Schematic = serde_json::from_value(serde_json::to_value(value.data).unwrap()).unwrap();
+                return SchematicVersioned::V2(schematic);
+            },
+            3 => {
+                let schematic: SpongeV3Schematic = serde_json::from_value(serde_json::to_value(value.data).unwrap()).unwrap();
+                return SchematicVersioned::V3(schematic);
+            }
+            _ => panic!("Unknown Schematic Version: {}", value.version),
+        }
     }
 }
 
@@ -180,8 +207,8 @@ pub struct Entity {
 
 impl SchematicVersioned {
     pub fn load_data<R>(data: R) -> Result<SchematicVersioned, Error> where R: Read {
-        let schematic: SchematicVersioned = from_gzip_reader(data)?;
-        Ok(schematic)
+        let raw: SchematicRaw = from_gzip_reader(data)?;
+        Ok(SchematicVersioned::from(raw))
     }
 
     pub fn load(path: &PathBuf) -> Result<SchematicVersioned, Error> {

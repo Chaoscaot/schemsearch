@@ -18,10 +18,8 @@
 pub mod pattern_mapper;
 
 use serde::{Deserialize, Serialize};
-use nbt::Map;
 use pattern_mapper::match_palette;
-use schemsearch_files::{SchematicVersioned, SpongeV2Schematic};
-use schemsearch_files::SchematicVersioned::V2;
+use schemsearch_files::SchematicVersioned;
 use crate::pattern_mapper::match_palette_adapt;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
