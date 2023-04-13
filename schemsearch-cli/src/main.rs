@@ -18,6 +18,7 @@
 mod types;
 mod json_output;
 mod sinks;
+mod stderr;
 
 use std::fmt::Debug;
 use std::io::Write;
@@ -40,6 +41,7 @@ use crate::types::SqlSchematicSupplier;
 use indicatif::*;
 use schemsearch_files::{SchematicVersioned};
 use crate::sinks::{OutputFormat, OutputSink};
+use crate::stderr::MaschineStdErr;
 
 fn main() {
     #[allow(unused_mut)]
@@ -137,6 +139,24 @@ fn main() {
                 .long("threads")
                 .action(ArgAction::Set)
                 .default_value("0")
+                .value_parser(|s: &str| s.parse::<usize>().map_err(|e| e.to_string())),
+        )
+        .arg(
+            Arg::new("machine")
+                .help("Output for machines")
+                .short('m')
+                .long("machine")
+                .action(ArgAction::Set)
+                .default_value("0")
+                .value_parser(|s: &str| s.parse::<u16>().map_err(|e| e.to_string()))
+        )
+        .arg(
+            Arg::new("limit")
+                .help("The maximum number of matches to return [0 = Unlimited]")
+                .short('l')
+                .long("limit")
+                .action(ArgAction::Set)
+                .default_value("50")
                 .value_parser(|s: &str| s.parse::<usize>().map_err(|e| e.to_string())),
         )
         .about("Searches for a pattern in a schematic")
@@ -246,9 +266,14 @@ fn main() {
 
     ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
 
-    let bar = ProgressBar::new(schematics.len() as u64);
+    let bar = ProgressBar::new(schematics.len() as u64); // "maschine"
     bar.set_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap());
-    bar.set_draw_target(ProgressDrawTarget::stderr_with_hz(5));
+    let term_size = *matches.get_one::<u16>("machine").expect("Could not get machine");
+    if term_size != 0 {
+        bar.set_draw_target(ProgressDrawTarget::term_like(Box::new(MaschineStdErr { size: term_size })))
+    }
+
+    let max_matching = *matches.get_one::<usize>("limit").expect("Could not get max-matching");
 
     let matches: Vec<SearchResult> = schematics.par_iter().progress_with(bar).map(|schem| {
         match schem {
@@ -286,12 +311,18 @@ fn main() {
         }
     }).collect();
 
-    for matching in matches {
+    let mut matches_count = 0;
+
+    'outer: for matching in matches {
         let schem_name = matching.name;
         let matching = matching.matches;
         for x in matching {
             for out in &mut output {
                 write!(out.1, "{}", out.0.found_match(&schem_name, x)).unwrap();
+            }
+            matches_count += 1;
+            if max_matching != 0 && matches_count >= max_matching {
+                break 'outer;
             }
         }
     }

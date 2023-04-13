@@ -2,6 +2,10 @@ default:
 	@echo "Building (Release)...";
 	cargo rustc --release --color=always -p schemsearch-cli -- -C target-feature=+avx2
 
+sql:
+	@echo "Building (Release)...";
+	cargo rustc --release --color=always -p schemsearch-cli --features sql -- -C target-feature=+avx2
+
 debug:
 	@echo "Building (Debug)...";
 	cargo build -p schemsearch-cli
