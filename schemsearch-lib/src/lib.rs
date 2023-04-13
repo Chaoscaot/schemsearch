@@ -18,6 +18,7 @@
 pub mod pattern_mapper;
 
 use serde::{Deserialize, Serialize};
+use nbt::Map;
 use pattern_mapper::match_palette;
 use schemsearch_files::{SchematicVersioned, SpongeV2Schematic};
 use schemsearch_files::SchematicVersioned::V2;
@@ -38,19 +39,11 @@ pub fn search(
     pattern_schem: &SchematicVersioned,
     search_behavior: SearchBehavior,
 ) -> Vec<Match> {
-    let schem = match schem {
-        V2(x) => x,
-        _ => return vec![],
-    };
-    let pattern_schem = match pattern_schem {
-        V2(schem) => schem,
-        _ => return vec![],
-    };
-    if schem.width < pattern_schem.width || schem.height < pattern_schem.height || schem.length < pattern_schem.length {
+    if schem.get_width() < pattern_schem.get_width() || schem.get_height() < pattern_schem.get_height() || schem.get_length() < pattern_schem.get_length() {
         return vec![];
     }
 
-    if pattern_schem.palette.len() > schem.palette.len() {
+    if pattern_schem.get_palette().len() > schem.get_palette().len() {
         return vec![];
     }
 
@@ -58,27 +51,27 @@ pub fn search(
 
     let mut matches: Vec<Match> = Vec::new();
 
-    let pattern_data = pattern_schem.block_data.as_slice();
+    let pattern_data = pattern_schem.get_block_data().as_slice();
 
     let schem_data = if search_behavior.ignore_block_data {
-        match_palette_adapt(&schem, &pattern_schem.palette, search_behavior.ignore_block_data)
+        match_palette_adapt(&schem, &pattern_schem.get_palette(), search_behavior.ignore_block_data)
     } else {
-        schem.block_data
+        schem.get_block_data().clone()
     };
 
     let schem_data = schem_data.as_slice();
 
-    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
+    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.get_palette().get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
     let pattern_blocks = pattern_data.len() as f32;
 
-    let pattern_width = pattern_schem.width as usize;
-    let pattern_height = pattern_schem.height as usize;
-    let pattern_length = pattern_schem.length as usize;
+    let pattern_width = pattern_schem.get_width() as usize;
+    let pattern_height = pattern_schem.get_height() as usize;
+    let pattern_length = pattern_schem.get_length() as usize;
 
-    let schem_width = schem.width as usize;
-    let schem_height = schem.height as usize;
-    let schem_length = schem.length as usize;
+    let schem_width = schem.get_width() as usize;
+    let schem_height = schem.get_height() as usize;
+    let schem_length = schem.get_length() as usize;
 
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {
@@ -145,6 +138,7 @@ pub fn normalize_data(data: &str, ignore_data: bool) -> &str {
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
+    use serde::de::Unexpected::Map;
     use schemsearch_files::SpongeV2Schematic;
     use crate::pattern_mapper::strip_data;
     use super::*;
@@ -154,7 +148,7 @@ mod tests {
         let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
 
         let schematic = match schematic {
-            V2(schem) => schem,
+            V2 (schematic) => schematic,
             _ => panic!("Invalid schematic version"),
         };
 
@@ -167,7 +161,7 @@ mod tests {
         let schematic: SchematicVersioned = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
 
         let schematic = match schematic {
-            V2(schem) => schem,
+            V2 (schematic) => schematic,
             _ => panic!("Invalid schematic version"),
         };
 
@@ -178,29 +172,15 @@ mod tests {
     #[test]
     fn test_strip_schem() {
         let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let schematic = match schematic {
-            V2(schem) => schem,
-            _ => panic!("Invalid schematic version"),
-        };
         let stripped = strip_data(&schematic);
 
-        assert_eq!(stripped.palette.keys().any(|k| k.contains('[')), false);
+        assert_eq!(stripped.get_palette().keys().any(|k| k.contains('[')), false);
     }
 
     #[test]
     fn test_match_palette() {
         let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
-
-        let schematic = match schematic {
-            V2(schem) => schem,
-            _ => panic!("Invalid schematic version"),
-        };
-
-        let endstone = match endstone {
-            V2(schem) => schem,
-            _ => panic!("Invalid schematic version"),
-        };
 
         let _ = match_palette(&schematic, &endstone, true);
     }
@@ -209,16 +189,6 @@ mod tests {
     fn test_match_palette_ignore_data() {
         let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
-
-        let schematic = match schematic {
-            V2(schem) => schem,
-            _ => panic!("Invalid schematic version"),
-        };
-
-        let endstone = match endstone {
-            V2(schem) => schem,
-            _ => panic!("Invalid schematic version"),
-        };
 
         let _ = match_palette(&schematic, &endstone, false);
     }
@@ -278,24 +248,25 @@ mod tests {
         assert_eq!(matches.len(), 1);
     }
 
+
     #[test]
-    pub fn sezitest() {
-        let schem = V2(SpongeV2Schematic {
-            version: 2,
+    pub fn testsezi() {
+        let schematic = SchematicVersioned::V2(SpongeV2Schematic {
             data_version: 0,
-            metadata: Default::default(),
-            width: 0,
-            height: 0,
-            length: 0,
-            offset: [1, 2, 3],
+            metadata: nbt::Map::new(),
+            width: 16,
+            height: 16,
+            length: 16,
+            offset: [0; 3],
             palette_max: 0,
-            palette: Default::default(),
+            palette: nbt::Map::new(),
             block_data: vec![],
+            entities: Some(vec![]),
             block_entities: vec![],
-            entities: None,
         });
 
-        println!("{:?}", schem);
-        println!("{}", serde_json::to_string_pretty(&schem).unwrap());
+        println!("{:?}", schematic);
+        println!("{}", serde_json::to_string_pretty(&schematic).unwrap());
     }
+
 }

@@ -21,18 +21,97 @@ use nbt::{Error, from_gzip_reader, Map, Value};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_this_or_that::as_i64;
 
-#[derive(Serialize, Deserialize, Debug)]
-#[serde(untagged)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(untagged, rename_all = "PascalCase")]
 pub enum SchematicVersioned {
-    V1,
+    V1(SpongeV1Schematic),
     V2(SpongeV2Schematic),
     V3(SpongeV3Schematic),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl SchematicVersioned {
+    #[inline]
+    pub fn get_width(&self) -> u16 {
+        return match self {
+            SchematicVersioned::V1(schematic) => schematic.width,
+            SchematicVersioned::V2(schematic) => schematic.width,
+            SchematicVersioned::V3(schematic) => schematic.width,
+        };
+    }
+
+    #[inline]
+    pub fn get_height(&self) -> u16 {
+        return match self {
+            SchematicVersioned::V1(schematic) => schematic.height,
+            SchematicVersioned::V2(schematic) => schematic.height,
+            SchematicVersioned::V3(schematic) => schematic.height,
+        };
+    }
+
+    #[inline]
+    pub fn get_length(&self) -> u16 {
+        return match self {
+            SchematicVersioned::V1(schematic) => schematic.length,
+            SchematicVersioned::V2(schematic) => schematic.length,
+            SchematicVersioned::V3(schematic) => schematic.length,
+        };
+    }
+
+    #[inline]
+    pub fn get_palette_max(&self) -> i32 {
+        return match self {
+            SchematicVersioned::V1(schematic) => schematic.palette_max,
+            SchematicVersioned::V2(schematic) => schematic.palette_max,
+            SchematicVersioned::V3(schematic) => schematic.blocks.palette.len() as i32,
+        };
+    }
+
+    #[inline]
+    pub fn get_palette(&self) -> &Map<String, i32> {
+        return match self {
+            SchematicVersioned::V1(schematic) => &schematic.palette,
+            SchematicVersioned::V2(schematic) => &schematic.palette,
+            SchematicVersioned::V3(schematic) => &schematic.blocks.palette,
+        };
+    }
+
+    #[inline]
+    pub fn get_block_data(&self) -> &Vec<i32> {
+        return match self {
+            SchematicVersioned::V1(schematic) => &schematic.block_data,
+            SchematicVersioned::V2(schematic) => &schematic.block_data,
+            SchematicVersioned::V3(schematic) => &schematic.blocks.block_data,
+        };
+    }
+
+    #[inline]
+    pub fn get_block_entities(&self) -> &Vec<BlockEntity> {
+        return match self {
+            SchematicVersioned::V1(schematic) => &schematic.tile_entities,
+            SchematicVersioned::V2(schematic) => &schematic.block_entities,
+            SchematicVersioned::V3(schematic) => &schematic.blocks.block_entities,
+        };
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct SpongeV1Schematic {
+    pub metadata: Map<String, Value>,
+    pub width: u16,
+    pub height: u16,
+    pub length: u16,
+    pub offset: [i32; 3],
+    pub palette_max: i32,
+    pub palette: Map<String, i32>,
+    #[serde(deserialize_with = "read_blockdata")]
+    pub block_data: Vec<i32>,
+    pub tile_entities: Vec<BlockEntity>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct SpongeV2Schematic {
-    pub version: i32,
     pub data_version: i32,
     pub metadata: Map<String, Value>,
     pub width: u16,
@@ -47,7 +126,7 @@ pub struct SpongeV2Schematic {
     pub entities: Option<Vec<Entity>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct SpongeV3Schematic {
     pub data_version: i32,
@@ -56,12 +135,17 @@ pub struct SpongeV3Schematic {
     pub height: u16,
     pub length: u16,
     pub offset: [i32; 3],
-    pub palette_max: i32,
+    pub blocks: BlockContainer,
+    pub entities: Option<Vec<Entity>>,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(rename_all = "PascalCase")]
+pub struct BlockContainer {
     pub palette: Map<String, i32>,
     #[serde(deserialize_with = "read_blockdata")]
     pub block_data: Vec<i32>,
     pub block_entities: Vec<BlockEntity>,
-    pub entities: Option<Vec<Entity>>,
 }
 
 fn read_blockdata<'de, D>(deserializer: D) -> Result<Vec<i32>, D::Error>
@@ -73,18 +157,24 @@ fn read_blockdata<'de, D>(deserializer: D) -> Result<Vec<i32>, D::Error>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "PascalCase")]
 pub struct BlockEntity {
-    #[serde(rename = "Id")]
     pub id: String,
-    #[serde(rename = "Pos")]
     pub pos: [i32; 3],
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Entity {
-    #[serde(rename = "Id")]
+#[serde(rename_all = "PascalCase")]
+pub struct BlockEntityV3 {
     pub id: String,
-    #[serde(rename = "Pos")]
+    pub pos: [i32; 3],
+    pub data: Map<String, Value>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "PascalCase")]
+pub struct Entity {
+    pub id: String,
     pub pos: [i32; 3],
 }
 
