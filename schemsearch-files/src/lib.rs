@@ -15,17 +15,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
-use nbt::{Error, from_gzip_reader, Map, Value};
+use fastnbt::error::Error;
+use fastnbt::Value;
+use flate2::read::GzDecoder;
 use serde::{Deserialize, Deserializer, Serialize};
+use serde::de::value::MapDeserializer;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 struct SchematicRaw {
     version: i32,
     #[serde(flatten)]
-    data: Map<String, Value>,
+    data: HashMap<String, Value>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -74,7 +78,7 @@ impl SchematicVersioned {
     }
 
     #[inline]
-    pub fn get_palette(&self) -> &Map<String, i32> {
+    pub fn get_palette(&self) -> &HashMap<String, i32> {
         return match self {
             SchematicVersioned::V1(schematic) => &schematic.palette,
             SchematicVersioned::V2(schematic) => &schematic.palette,
@@ -105,15 +109,15 @@ impl From<SchematicRaw> for SchematicVersioned {
     fn from(value: SchematicRaw) -> Self {
         match value.version {
             1 => {
-                let schematic: SpongeV1Schematic = serde_json::from_value(serde_json::to_value(value.data).unwrap()).unwrap();
+                let schematic: SpongeV1Schematic = SpongeV1Schematic::deserialize(MapDeserializer::new(value.data.into_iter())).unwrap();
                 return SchematicVersioned::V1(schematic);
             },
             2 => {
-                let schematic: SpongeV2Schematic = serde_json::from_value(serde_json::to_value(value.data).unwrap()).unwrap();
+                let schematic: SpongeV2Schematic = SpongeV2Schematic::deserialize(MapDeserializer::new(value.data.into_iter())).unwrap();
                 return SchematicVersioned::V2(schematic);
             },
             3 => {
-                let schematic: SpongeV3Schematic = serde_json::from_value(serde_json::to_value(value.data).unwrap()).unwrap();
+                let schematic: SpongeV3Schematic = SpongeV3Schematic::deserialize(MapDeserializer::new(value.data.into_iter())).unwrap();
                 return SchematicVersioned::V3(schematic);
             }
             _ => panic!("Unknown Schematic Version: {}", value.version),
@@ -124,13 +128,13 @@ impl From<SchematicRaw> for SchematicVersioned {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct SpongeV1Schematic {
-    pub metadata: Map<String, Value>,
+    pub metadata: HashMap<String, Value>,
     pub width: u16,
     pub height: u16,
     pub length: u16,
     pub offset: [i32; 3],
     pub palette_max: i32,
-    pub palette: Map<String, i32>,
+    pub palette: HashMap<String, i32>,
     #[serde(deserialize_with = "read_blockdata")]
     pub block_data: Vec<i32>,
     pub tile_entities: Vec<BlockEntity>,
@@ -140,13 +144,13 @@ pub struct SpongeV1Schematic {
 #[serde(rename_all = "PascalCase")]
 pub struct SpongeV2Schematic {
     pub data_version: i32,
-    pub metadata: Map<String, Value>,
+    pub metadata: HashMap<String, Value>,
     pub width: u16,
     pub height: u16,
     pub length: u16,
     pub offset: [i32; 3],
     pub palette_max: i32,
-    pub palette: Map<String, i32>,
+    pub palette: HashMap<String, i32>,
     #[serde(deserialize_with = "read_blockdata")]
     pub block_data: Vec<i32>,
     pub block_entities: Vec<BlockEntity>,
@@ -157,7 +161,7 @@ pub struct SpongeV2Schematic {
 #[serde(rename_all = "PascalCase")]
 pub struct SpongeV3Schematic {
     pub data_version: i32,
-    pub metadata: Map<String, Value>,
+    pub metadata: HashMap<String, Value>,
     pub width: u16,
     pub height: u16,
     pub length: u16,
@@ -169,7 +173,7 @@ pub struct SpongeV3Schematic {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct BlockContainer {
-    pub palette: Map<String, i32>,
+    pub palette: HashMap<String, i32>,
     #[serde(deserialize_with = "read_blockdata")]
     pub block_data: Vec<i32>,
     pub block_entities: Vec<BlockEntity>,
@@ -195,7 +199,7 @@ pub struct BlockEntity {
 pub struct BlockEntityV3 {
     pub id: String,
     pub pos: [i32; 3],
-    pub data: Map<String, Value>,
+    pub data: HashMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -207,7 +211,7 @@ pub struct Entity {
 
 impl SchematicVersioned {
     pub fn load_data<R>(data: R) -> Result<SchematicVersioned, Error> where R: Read {
-        let raw: SchematicRaw = from_gzip_reader(data)?;
+        let raw: SchematicRaw = fastnbt::from_reader(GzDecoder::new(data))?;
         Ok(SchematicVersioned::from(raw))
     }
 
