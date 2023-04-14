@@ -15,7 +15,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::collections::HashMap;
+use std::collections::hash_map::{HashMap};
 use std::io::Read;
 use std::path::PathBuf;
 use fastnbt::error::Error;
@@ -105,20 +105,22 @@ impl SchematicVersioned {
     }
 }
 
-impl From<SchematicRaw> for SchematicVersioned {
-    fn from(value: SchematicRaw) -> Self {
+impl TryFrom<SchematicRaw> for SchematicVersioned {
+    type Error = Error;
+
+    fn try_from(value: SchematicRaw) -> Result<Self, Self::Error> {
         match value.version {
             1 => {
-                let schematic: SpongeV1Schematic = SpongeV1Schematic::deserialize(MapDeserializer::new(value.data.into_iter())).unwrap();
-                return SchematicVersioned::V1(schematic);
+                let schematic: SpongeV1Schematic = fastnbt::from_value(&fastnbt::to_value(value.data)?)?;
+                return Ok(SchematicVersioned::V1(schematic));
             },
             2 => {
-                let schematic: SpongeV2Schematic = SpongeV2Schematic::deserialize(MapDeserializer::new(value.data.into_iter())).unwrap();
-                return SchematicVersioned::V2(schematic);
+                let schematic: SpongeV2Schematic = fastnbt::from_value(&fastnbt::to_value(value.data)?)?;
+                return Ok(SchematicVersioned::V2(schematic));
             },
             3 => {
-                let schematic: SpongeV3Schematic = SpongeV3Schematic::deserialize(MapDeserializer::new(value.data.into_iter())).unwrap();
-                return SchematicVersioned::V3(schematic);
+                let schematic: SpongeV3Schematic = fastnbt::from_value(&fastnbt::to_value(value.data)?)?;
+                return Ok(SchematicVersioned::V3(schematic));
             }
             _ => panic!("Unknown Schematic Version: {}", value.version),
         }
@@ -212,7 +214,7 @@ pub struct Entity {
 impl SchematicVersioned {
     pub fn load_data<R>(data: R) -> Result<SchematicVersioned, Error> where R: Read {
         let raw: SchematicRaw = fastnbt::from_reader(GzDecoder::new(data))?;
-        Ok(SchematicVersioned::from(raw))
+        SchematicVersioned::try_from(raw)
     }
 
     pub fn load(path: &PathBuf) -> Result<SchematicVersioned, Error> {
