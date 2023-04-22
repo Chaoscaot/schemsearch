@@ -17,7 +17,6 @@
 
 pub mod pattern_mapper;
 
-use serde::{Deserialize, Serialize};
 use pattern_mapper::match_palette;
 use schemsearch_files::SchematicVersioned;
 use crate::pattern_mapper::match_palette_adapt;
@@ -136,7 +135,7 @@ pub fn normalize_data(data: &str, ignore_data: bool) -> &str {
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
-    use serde::de::Unexpected::Map;
+    use schemsearch_files::SchematicVersioned::V2;
     use schemsearch_files::SpongeV2Schematic;
     use crate::pattern_mapper::strip_data;
     use super::*;
@@ -245,26 +244,4 @@ mod tests {
         println!("{:?}", matches);
         assert_eq!(matches.len(), 1);
     }
-
-
-    #[test]
-    pub fn testsezi() {
-        let schematic = SchematicVersioned::V2(SpongeV2Schematic {
-            data_version: 0,
-            metadata: nbt::Map::new(),
-            width: 16,
-            height: 16,
-            length: 16,
-            offset: [0; 3],
-            palette_max: 0,
-            palette: nbt::Map::new(),
-            block_data: vec![],
-            entities: Some(vec![]),
-            block_entities: vec![],
-        });
-
-        println!("{:?}", schematic);
-        println!("{}", serde_json::to_string_pretty(&schematic).unwrap());
-    }
-
 }

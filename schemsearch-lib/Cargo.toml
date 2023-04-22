@@ -7,6 +7,4 @@ license = "AGPL-3.0-or-later"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hematite-nbt = "0.5.2"
-serde = "1.0.152"
 schemsearch-files = { path = "../schemsearch-files" }
