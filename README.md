@@ -43,7 +43,6 @@ schemsearch-cli --help
 ## Roadmap
 A list of features that are planned to be implemented in the future. In order of priority.
 
-- [ ] Full JSON output (Progressbar)
 - [ ] Use AVX2 for faster search
 - [ ] Tile entities data search
 - [ ] Entities search

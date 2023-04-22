@@ -21,7 +21,7 @@ use jni::JNIEnv;
 use jni::objects::{JClass, JString};
 
 use jni::sys::jstring;
-use schemsearch_files::Schematic;
+use schemsearch_files::SpongeV2Schematic;
 use schemsearch_lib::{search, SearchBehavior};
 
 #[no_mangle]
@@ -32,8 +32,8 @@ pub extern "system" fn Java_SchemSearch_search<'local>(mut env: JNIEnv<'local>,
     pattern_path: JString<'local>) -> jstring {
     let schematic_path: String = env.get_string(&schematic_path).expect("Couldn't get java string!").into();
     let pattern_path: String = env.get_string(&pattern_path).expect("Couldn't get java string!").into();
-    let schematic = Schematic::load(&PathBuf::from(&schematic_path)).unwrap();
-    let pattern = Schematic::load(&PathBuf::from(&pattern_path)).unwrap();
+    let schematic = SpongeV2Schematic::load(&PathBuf::from(&schematic_path)).unwrap();
+    let pattern = SpongeV2Schematic::load(&PathBuf::from(&pattern_path)).unwrap();
 
     let matches = search(schematic, &pattern, SearchBehavior {
         ignore_block_data: true,

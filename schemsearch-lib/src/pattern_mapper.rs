@@ -15,27 +15,28 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use nbt::Map;
-use schemsearch_files::Schematic;
+use std::collections::HashMap;
+use nbt::CompoundTag;
+use schemsearch_files::{SchematicVersioned, SpongeV2Schematic};
 use crate::normalize_data;
 
-fn create_reverse_palette(schem: &Schematic) -> Vec<&str> {
-    let mut reverse_palette = Vec::with_capacity(schem.palette_max as usize);
-    (0..schem.palette_max).for_each(|_| reverse_palette.push(""));
-    for (key, value) in schem.palette.iter() {
+fn create_reverse_palette(schem: &SchematicVersioned) -> Vec<&str> {
+    let mut reverse_palette = Vec::with_capacity(schem.get_palette_max() as usize);
+    (0..schem.get_palette_max()).for_each(|_| reverse_palette.push(""));
+    for (key, value) in schem.get_palette().iter() {
         reverse_palette[*value as usize] = key;
     }
     reverse_palette
 }
 
-pub fn strip_data(schem: &Schematic) -> Schematic {
+pub fn strip_data(schem: &SchematicVersioned) -> SchematicVersioned {
     let mut data: Vec<i32> = Vec::new();
 
-    let mut palette: Map<String, i32> = Map::new();
+    let mut palette: HashMap<String, i32> = HashMap::new();
     let mut palette_max: i32 = 0;
     let reverse_palette = create_reverse_palette(schem);
 
-    for block in schem.block_data.iter() {
+    for block in schem.get_block_data().iter() {
         let block_name = reverse_palette[*block as usize].clone();
         let block_name = block_name.split('[').next().unwrap().to_string();
 
@@ -47,27 +48,28 @@ pub fn strip_data(schem: &Schematic) -> Schematic {
         data.push(*entry);
     }
 
-    Schematic {
-        version: schem.version,
-        data_version: schem.data_version,
+    SchematicVersioned::V2(SpongeV2Schematic {
+        data_version: 1,
         palette,
         palette_max,
         block_data: data,
-        block_entities: schem.block_entities.clone(),
-        height: schem.height,
-        length: schem.length,
-        width: schem.width,
-        metadata: schem.metadata.clone(),
-        offset: schem.offset.clone(),
+        block_entities: schem.get_block_entities().clone(),
+        height: schem.get_height(),
+        length: schem.get_length(),
+        width: schem.get_width(),
+        metadata: CompoundTag::new(),
+        offset: [0; 3],
         entities: None,
-    }
+    },)
+
+
 }
 
-pub fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32>, ignore_data: bool) -> Vec<i32> {
+pub fn match_palette_adapt(schem: &SchematicVersioned, matching_palette: &HashMap<String, i32>, ignore_data: bool) -> Vec<i32> {
     let mut data: Vec<i32> = Vec::new();
     let reverse_palette = create_reverse_palette(schem);
 
-    for x in &schem.block_data {
+    for x in schem.get_block_data() {
         let blockname = reverse_palette[*x as usize];
         let blockname = if ignore_data { normalize_data(blockname, ignore_data) } else { blockname };
         let block_id = match matching_palette.get(&*blockname) {
@@ -81,10 +83,10 @@ pub fn match_palette_adapt(schem: &Schematic, matching_palette: &Map<String, i32
 }
 
 pub fn match_palette(
-    schem: &Schematic,
-    pattern: &Schematic,
+    schem: &SchematicVersioned,
+    pattern: &SchematicVersioned,
     ignore_data: bool,
-) -> Schematic {
+) -> SchematicVersioned {
     if ignore_data {
         match_palette_internal(&strip_data(schem), &strip_data(pattern), ignore_data)
     } else {
@@ -93,24 +95,23 @@ pub fn match_palette(
 }
 
 fn match_palette_internal(
-    schem: &Schematic,
-    pattern: &Schematic,
+    schem: &SchematicVersioned,
+    pattern: &SchematicVersioned,
     ignore_data: bool,
-) -> Schematic {
-    let data_pattern: Vec<i32> = match_palette_adapt(&pattern, &schem.palette, ignore_data);
+) -> SchematicVersioned {
+    let data_pattern: Vec<i32> = match_palette_adapt(&pattern, schem.get_palette(), ignore_data);
 
-    Schematic {
-        version: pattern.version.clone(),
-        data_version: pattern.data_version.clone(),
-        palette: schem.palette.clone(),
-        palette_max: schem.palette_max,
+    SchematicVersioned::V2(SpongeV2Schematic {
+        data_version: 0,
+        palette: schem.get_palette().clone(),
+        palette_max: schem.get_palette_max(),
         block_data: data_pattern,
-        block_entities: pattern.block_entities.clone(),
-        height: pattern.height.clone(),
-        length: pattern.length.clone(),
-        width: pattern.width.clone(),
-        metadata: pattern.metadata.clone(),
-        offset: pattern.offset.clone(),
+        block_entities: pattern.get_block_entities().clone(),
+        height: pattern.get_height(),
+        length: pattern.get_length(),
+        width: pattern.get_width(),
+        metadata: CompoundTag::new(),
+        offset: [0; 3],
         entities: None,
-    }
+    })
 }

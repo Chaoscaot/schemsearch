@@ -17,9 +17,9 @@
 
 pub mod pattern_mapper;
 
-use serde::{Deserialize, Serialize};
+use serde::{Serialize, Deserialize};
 use pattern_mapper::match_palette;
-use schemsearch_files::Schematic;
+use schemsearch_files::SchematicVersioned;
 use crate::pattern_mapper::match_palette_adapt;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -33,15 +33,15 @@ pub struct SearchBehavior {
 }
 
 pub fn search(
-    schem: Schematic,
-    pattern_schem: &Schematic,
+    schem: SchematicVersioned,
+    pattern_schem: &SchematicVersioned,
     search_behavior: SearchBehavior,
 ) -> Vec<Match> {
-    if schem.width < pattern_schem.width || schem.height < pattern_schem.height || schem.length < pattern_schem.length {
+    if schem.get_width() < pattern_schem.get_width() || schem.get_height() < pattern_schem.get_height() || schem.get_length() < pattern_schem.get_length() {
         return vec![];
     }
 
-    if pattern_schem.palette.len() > schem.palette.len() {
+    if pattern_schem.get_palette().len() > schem.get_palette().len() {
         return vec![];
     }
 
@@ -49,27 +49,27 @@ pub fn search(
 
     let mut matches: Vec<Match> = Vec::new();
 
-    let pattern_data = pattern_schem.block_data.as_slice();
+    let pattern_data = pattern_schem.get_block_data().as_slice();
 
     let schem_data = if search_behavior.ignore_block_data {
-        match_palette_adapt(&schem, &pattern_schem.palette, search_behavior.ignore_block_data)
+        match_palette_adapt(&schem, &pattern_schem.get_palette(), search_behavior.ignore_block_data)
     } else {
-        schem.block_data
+        schem.get_block_data().clone()
     };
 
     let schem_data = schem_data.as_slice();
 
-    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
+    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.get_palette().get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
     let pattern_blocks = pattern_data.len() as f32;
 
-    let pattern_width = pattern_schem.width as usize;
-    let pattern_height = pattern_schem.height as usize;
-    let pattern_length = pattern_schem.length as usize;
+    let pattern_width = pattern_schem.get_width() as usize;
+    let pattern_height = pattern_schem.get_height() as usize;
+    let pattern_length = pattern_schem.get_length() as usize;
 
-    let schem_width = schem.width as usize;
-    let schem_height = schem.height as usize;
-    let schem_length = schem.length as usize;
+    let schem_width = schem.get_width() as usize;
+    let schem_height = schem.get_height() as usize;
+    let schem_length = schem.get_length() as usize;
 
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {
@@ -132,67 +132,69 @@ pub fn normalize_data(data: &str, ignore_data: bool) -> &str {
     }
 }
 
-pub fn parse_schematic(data: &Vec<u8>) -> Schematic {
-    if data[0] == 0x1f && data[1] == 0x8b {
-        // gzip
-        nbt::from_gzip_reader(data.as_slice()).unwrap()
-    } else {
-        // uncompressed
-        nbt::from_reader(data.as_slice()).unwrap()
-    }
-}
-
 #[allow(unused_imports)]
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
-    use schemsearch_files::Schematic;
+    use schemsearch_files::SchematicVersioned::V2;
+    use schemsearch_files::SpongeV2Schematic;
     use crate::pattern_mapper::strip_data;
     use super::*;
 
     #[test]
     fn read_schematic() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+
+        let schematic = match schematic {
+            V2 (schematic) => schematic,
+            _ => panic!("Invalid schematic version"),
+        };
+
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
     }
 
     #[test]
     fn test_parse_function() {
-        let file = std::fs::File::open("../tests/simple.schem").expect("Failed to open file");
-        let schematic: Schematic = parse_schematic(&std::io::Read::bytes(file).map(|b| b.unwrap()).collect());
+        let schematic: SchematicVersioned = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+
+        let schematic = match schematic {
+            V2 (schematic) => schematic,
+            _ => panic!("Invalid schematic version"),
+        };
+
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
     }
 
     #[test]
     fn test_strip_schem() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let stripped = strip_data(&schematic);
 
-        assert_eq!(stripped.palette.keys().any(|k| k.contains('[')), false);
+        assert_eq!(stripped.get_palette().keys().any(|k| k.contains('[')), false);
     }
 
     #[test]
     fn test_match_palette() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = match_palette(&schematic, &endstone, true);
     }
 
     #[test]
     fn test_match_palette_ignore_data() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = match_palette(&schematic, &endstone, false);
     }
 
     #[test]
     pub fn test_big_search() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let endstone = Schematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = search(schematic, &endstone, SearchBehavior {
             ignore_block_data: true,
@@ -206,8 +208,8 @@ mod tests {
 
     #[test]
     pub fn test_search() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
-        let pattern = Schematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/Random.schem")).unwrap();
+        let pattern = SchematicVersioned::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
 
         let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: true,
@@ -228,8 +230,8 @@ mod tests {
 
     #[test]
     pub fn test_search_ws() {
-        let schematic = Schematic::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
-        let pattern = Schematic::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
+        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
+        let pattern = SchematicVersioned::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
 
         let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: false,
