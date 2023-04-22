@@ -15,7 +15,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use nbt::Map;
+use std::collections::HashMap;
+use nbt::CompoundTag;
 use schemsearch_files::{SchematicVersioned, SpongeV2Schematic};
 use crate::normalize_data;
 
@@ -31,7 +32,7 @@ fn create_reverse_palette(schem: &SchematicVersioned) -> Vec<&str> {
 pub fn strip_data(schem: &SchematicVersioned) -> SchematicVersioned {
     let mut data: Vec<i32> = Vec::new();
 
-    let mut palette: Map<String, i32> = Map::new();
+    let mut palette: HashMap<String, i32> = HashMap::new();
     let mut palette_max: i32 = 0;
     let reverse_palette = create_reverse_palette(schem);
 
@@ -56,7 +57,7 @@ pub fn strip_data(schem: &SchematicVersioned) -> SchematicVersioned {
         height: schem.get_height(),
         length: schem.get_length(),
         width: schem.get_width(),
-        metadata: Map::new(),
+        metadata: CompoundTag::new(),
         offset: [0; 3],
         entities: None,
     },)
@@ -64,7 +65,7 @@ pub fn strip_data(schem: &SchematicVersioned) -> SchematicVersioned {
 
 }
 
-pub fn match_palette_adapt(schem: &SchematicVersioned, matching_palette: &Map<String, i32>, ignore_data: bool) -> Vec<i32> {
+pub fn match_palette_adapt(schem: &SchematicVersioned, matching_palette: &HashMap<String, i32>, ignore_data: bool) -> Vec<i32> {
     let mut data: Vec<i32> = Vec::new();
     let reverse_palette = create_reverse_palette(schem);
 
@@ -109,7 +110,7 @@ fn match_palette_internal(
         height: pattern.get_height(),
         length: pattern.get_length(),
         width: pattern.get_width(),
-        metadata: Map::new(),
+        metadata: CompoundTag::new(),
         offset: [0; 3],
         entities: None,
     })

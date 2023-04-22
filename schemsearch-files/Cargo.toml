@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 flate2 = "1.0.25"
-hematite-nbt = "0.5.2"
+named-binary-tag = "0.6"
 

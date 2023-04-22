@@ -17,6 +17,7 @@
 
 pub mod pattern_mapper;
 
+use serde::{Serialize, Deserialize};
 use pattern_mapper::match_palette;
 use schemsearch_files::SchematicVersioned;
 use crate::pattern_mapper::match_palette_adapt;

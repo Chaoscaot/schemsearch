@@ -18,7 +18,7 @@
 use std::collections::hash_map::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
-use nbt::Value;
+use nbt::{CompoundTag, Tag};
 
 #[derive(Clone, Debug)]
 pub enum SchematicVersioned {
@@ -94,7 +94,7 @@ impl SchematicVersioned {
 
 #[derive(Clone, Debug)]
 pub struct SpongeV1Schematic {
-    pub metadata: HashMap<String, Value>,
+    pub metadata: CompoundTag,
     pub width: u16,
     pub height: u16,
     pub length: u16,
@@ -108,7 +108,7 @@ pub struct SpongeV1Schematic {
 #[derive(Clone, Debug)]
 pub struct SpongeV2Schematic {
     pub data_version: i32,
-    pub metadata: HashMap<String, Value>,
+    pub metadata: CompoundTag,
     pub width: u16,
     pub height: u16,
     pub length: u16,
@@ -123,7 +123,7 @@ pub struct SpongeV2Schematic {
 #[derive(Clone, Debug)]
 pub struct SpongeV3Schematic {
     pub data_version: i32,
-    pub metadata: HashMap<String, Value>,
+    pub metadata: CompoundTag,
     pub width: u16,
     pub height: u16,
     pub length: u16,
@@ -149,7 +149,7 @@ pub struct BlockEntity {
 pub struct BlockEntityV3 {
     pub id: String,
     pub pos: [i32; 3],
-    pub data: HashMap<String, Value>,
+    pub data: HashMap<String, Tag>,
 }
 
 #[derive(Debug, Clone)]
@@ -159,17 +159,9 @@ pub struct Entity {
 }
 
 impl SchematicVersioned {
-    pub fn load_data<R>(data: R) -> Result<SchematicVersioned, String> where R: Read {
-        let nbt: HashMap<String, Value> = nbt::de::from_gzip_reader(data).map_err(|e| e.to_string())?;
-        let version = match nbt.get("Version") {
-            Some(version) => match version {
-                Value::Short(n) => *n as i32,
-                Value::Byte(n) => *n as i32,
-                Value::Int(n) => *n,
-                _ => return Err("Invalid schematic: Wrong Version Type".to_string()),
-            },
-            None => return Err("Invalid schematic: Version not Found".to_string()),
-        };
+    pub fn load_data<R>(data: &mut R) -> Result<SchematicVersioned, String> where R: Read {
+        let nbt: CompoundTag = nbt::decode::read_gzip_compound_tag(data).map_err(|e| e.to_string())?;
+        let version = nbt.get_i32("Version").map_err(|e| e.to_string())?;
 
         match version {
             1 => Ok(SchematicVersioned::V1(SpongeV1Schematic::from_nbt(nbt)?)),
@@ -180,212 +172,99 @@ impl SchematicVersioned {
     }
 
     pub fn load(path: &PathBuf) -> Result<SchematicVersioned, String> {
-        let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
-        Self::load_data(file)
+        let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+        Self::load_data(&mut file)
     }
 }
 
 impl SpongeV1Schematic {
-    pub fn from_nbt(nbt: HashMap<String, Value>) -> Result<Self, String> {
+    pub fn from_nbt(nbt: CompoundTag) -> Result<Self, String> {
         Ok(Self {
-            metadata: match nbt.get("Metadata").ok_or("Invalid schematic: Metadata not found".to_string())? {
-                Value::Compound(metadata) => metadata.clone(),
-                _ => return Err("Invalid schematic: Metadata Wrong Type".to_string()),
-            },
-            width: match nbt.get("Width").ok_or("Invalid schematic: Width not found".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic: Width Wrong Type".to_string()),
-            },
-            height: match nbt.get("Height").ok_or("Invalid schematic: Height not found".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic: Height Wrong Type".to_string()),
-            },
-            length: match nbt.get("Length").ok_or("Invalid schematic: Length not found".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic: Length Wrong Type".to_string()),
-            },
-            offset: read_offset(nbt.get("Offset"))?,
-            palette_max: match nbt.get("PaletteMax").ok_or("Invalid schematic: PaletteMax not found".to_string())? {
-                Value::Int(p) => *p,
-                _ => return Err("Invalid schematic: PaletteMax Wrong Type".to_string()),
-            },
-            palette: read_palette(nbt.get("Palette"))?,
-            block_data: read_blocks(nbt.get("BlockData"))?,
-            tile_entities: read_tile_entities(nbt.get("TileEntities"))?,
+            metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
+            width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
+            height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
+            length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
+            offset: read_offset(nbt.get_i32_vec("Offset").map_err(|e| e.to_string())?)?,
+            palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
+            palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
+            block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
+            tile_entities: read_tile_entities(nbt.get_compound_tag_vec("TileEntities").map_err(|e| e.to_string())?)?,
         })
     }
 }
 
 impl SpongeV2Schematic {
-    pub fn from_nbt(nbt: HashMap<String, Value>) -> Result<Self, String> {
+    pub fn from_nbt(nbt: CompoundTag) -> Result<Self, String> {
         Ok(Self{
-            data_version: match nbt.get("DataVersion").ok_or("Invalid schematic: DataVersion Missing".to_string())? {
-                Value::Short(n) => *n as i32,
-                Value::Byte(n) => *n as i32,
-                Value::Int(n) => *n,
-                _ => return Err("Invalid schematic: DataVersion Wrong Type".to_string()),
-            },
-            metadata: match nbt.get("Metadata").ok_or("Invalid schematic".to_string())? {
-                Value::Compound(m) => m.clone(),
-                _ => return Err("Invalid schematic: Metadata Wrong Type".to_string()),
-            },
-            width: match nbt.get("Width").ok_or("Invalid schematic".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic: Width Wrong Type".to_string()),
-            },
-            height: match nbt.get("Height").ok_or("Invalid schematic".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic: Height Wrong Type".to_string()),
-            },
-            length: match nbt.get("Length").ok_or("Invalid schematic".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic: Length Wrong Type".to_string()),
-            },
-            offset: read_offset(nbt.get("Offset"))?,
-            palette_max: match nbt.get("PaletteMax").ok_or("Invalid schematic: PaletteMax Missing".to_string())? {
-                Value::Short(n) => *n as i32,
-                Value::Byte(n) => *n as i32,
-                Value::Int(n) => *n,
-                _ => return Err("Invalid schematic: PaletteMax Invalid Type".to_string()),
-            },
-            palette: read_palette(nbt.get("Palette"))?,
-            block_data: read_blocks(nbt.get("BlockData"))?,
-            block_entities: read_tile_entities(nbt.get("BlockEntities"))?,
+            data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
+            metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
+            width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
+            height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
+            length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
+            offset: read_offset(nbt.get_i32_vec("Offset").map_err(|e| e.to_string())?)?,
+            palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
+            palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
+            block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
+            block_entities: read_tile_entities(nbt.get_compound_tag_vec("BlockEntities").map_err(|e| e.to_string())?)?,
             entities: None,
         })
     }
 }
 
 impl SpongeV3Schematic {
-    pub fn from_nbt(nbt: HashMap<String, Value>) -> Result<Self, String> {
+    pub fn from_nbt(nbt: CompoundTag) -> Result<Self, String> {
+        let blocks = nbt.get_compound_tag("Blocks").map_err(|e| e.to_string())?;
         Ok(Self{
-            data_version: match nbt.get("DataVersion").ok_or("Invalid schematic".to_string())? {
-                Value::Int(d) => *d,
-                _ => return Err("Invalid schematic".to_string()),
-            },
-            metadata: match nbt.get("Metadata").ok_or("Invalid schematic".to_string())? {
-                Value::Compound(m) => m.clone(),
-                _ => return Err("Invalid schematic".to_string()),
-            },
-            width: match nbt.get("Width").ok_or("Invalid schematic".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic".to_string()),
-            },
-            height: match nbt.get("Height").ok_or("Invalid schematic".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic".to_string()),
-            },
-            length: match nbt.get("Length").ok_or("Invalid schematic".to_string())? {
-                Value::Short(n) => *n as u16,
-                Value::Byte(n) => *n as u16,
-                _ => return Err("Invalid schematic".to_string()),
-            },
-            offset: read_offset(nbt.get("Offset"))?,
-            blocks: match nbt.get("Blocks").ok_or("Invalid schematic".to_string())? {
-                Value::Compound(b) => {
-                    BlockContainer {
-                        palette: read_palette(b.get("Palette"))?,
-                        block_data: read_blocks(b.get("BlockData"))?,
-                        block_entities: read_tile_entities(b.get("BlockEntities"))?,
-                    }
-                }
-                _ => return Err("Invalid schematic".to_string()),
+            data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
+            metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
+            width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
+            height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
+            length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
+            offset: read_offset(nbt.get_i32_vec("Offset").map_err(|e| e.to_string())?)?,
+            blocks: BlockContainer {
+                palette: read_palette(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
+                block_data: read_blocks(blocks.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
+                block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").map_err(|e| e.to_string())?)?,
             },
             entities: None,
         })
     }
 }
 
-fn read_tile_entities(tag: Option<&Value>) -> Result<Vec<BlockEntity>, String> {
-    match tag.ok_or("Invalid schematic: read_tile_entities not found".to_string())? {
-        Value::List(t) => {
-            let mut tile_entities = Vec::new();
-            for te in t.iter() {
-                match te {
-                    Value::Compound(te) => {
-                        let id = match te.get("Id") {
-                            None => return Err("Invalid schematic: Id Not Found".to_string()),
-                            Some(id) => match id {
-                                Value::String(id) => id.clone(),
-                                _ => return Err("Invalid schematic: Id Wrong Type".to_string()),
-                            },
-                        };
-                        let pos = read_offset(te.get("Pos"))?;
-                        tile_entities.push(BlockEntity { id, pos });
-                    },
-                    _ => return Err("Invalid schematic: te Wrong Type".to_string()),
-                };
-            }
-            Ok(tile_entities)
-        },
-        Value::ByteArray(_) => Ok(vec![]),
-        _ => return Err("Invalid schematic: te wrong type".to_string()),
+fn read_tile_entities(tag: Vec<&CompoundTag>) -> Result<Vec<BlockEntity>, String> {
+let mut tile_entities = Vec::new();
+    for t in tag {
+        tile_entities.push(BlockEntity {
+            id: t.get_str("Id").map_err(|e| e.to_string())?.to_string(),
+            pos: read_offset(t.get("Pos").map_err(|e| e.to_string())?)?,
+        });
+    }
+    Ok(tile_entities)
+}
+
+#[inline]
+fn read_offset(offset: &Vec<i32>) -> Result<[i32; 3], String> {
+    match offset.len() {
+        3 => Ok([offset[0], offset[1], offset[2]]),
+        _ => Err("Invalid schematic: read_offset wrong length".to_string()),
     }
 }
 
 #[inline]
-fn read_offset(offset: Option<&Value>) -> Result<[i32; 3], String> {
-    match offset.ok_or("Invalid schematic: read_offset missing".to_string())? {
-        Value::IntArray(o) => match o.len() {
-            3 => Ok([o[0], o[1], o[2]]),
-            _ => Err("Invalid schematic: Invalid IntArray".to_string()),
-        },
-        Value::ByteArray(o) => match o.len() {
-            3 => Ok([o[0] as i32, o[1]  as i32, o[2] as i32]),
-            _ => Err("Invalid schematic: Invalid byteArray".to_string()),
-        },
-        Value::List(l) => match l.len() {
-            3 => {
-                let mut offset = [0; 3];
-                for (i, v) in l.iter().enumerate() {
-                    match v {
-                        Value::Int(n) => offset[i] = *n,
-                        Value::Byte(n) => offset[i] = *n as i32,
-                        Value::Short(n) => offset[i] = *n as i32,
-                        _ => return Err("Invalid schematic: read_offset invalid Number".to_string()),
-                    };
-                }
-                Ok(offset)
-            },
-            _ => Err("Invalid schematic: Invalid List".to_string()),
-        }
-        _ => Err("Invalid schematic: read_offset".to_string()),
+fn read_palette(p: &CompoundTag) -> HashMap<String, i32> {
+    let mut palette = HashMap::new();
+    for (key, value) in p.iter() {
+        match value {
+            Tag::Int(n) => { palette.insert(key.clone(), *n); },
+            _ => {},
+        };
     }
+    palette
 }
 
 #[inline]
-fn read_palette(palette: Option<&Value>) -> Result<HashMap<String, i32>, String> {
-    match palette.ok_or("Invalid schematic: read_palette missing".to_string())? {
-        Value::Compound(p) => {
-            let mut palette = HashMap::new();
-            for (k, v) in p.iter() {
-                match v {
-                    Value::Int(v) => { palette.insert(k.clone(), *v); },
-                    Value::Byte(v) => { palette.insert(k.clone(), *v as i32); },
-                    Value::Short(v) => { palette.insert(k.clone(), *v as i32); },
-                    _ => return Err("Invalid schematic: read_palette invalid Number".to_string()),
-                };
-            }
-            Ok(palette)
-        },
-        _ => Err("Invalid schematic: read_palette invalid Type".to_string()),
-    }
-}
-
-#[inline]
-fn read_blocks(blockdata: Option<&Value>) -> Result<Vec<i32>, String> {
-    match blockdata.ok_or("Invalid schematic: BlockData not found".to_string())? {
-        Value::ByteArray(b) => Ok(read_varint_array(b)),
-        _ => Err("Invalid schematic: Invalid BlockData".to_string()),
-    }
+fn read_blocks(blockdata: &Vec<i8>) -> Vec<i32> {
+    read_varint_array(blockdata)
 }
 
 #[inline]
