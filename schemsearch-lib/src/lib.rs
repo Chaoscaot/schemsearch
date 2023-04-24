@@ -136,19 +136,12 @@ pub fn normalize_data(data: &str, ignore_data: bool) -> &str {
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
-    use schemsearch_files::SchematicVersioned::V2;
-    use schemsearch_files::SpongeV2Schematic;
     use crate::pattern_mapper::strip_data;
     use super::*;
 
     #[test]
     fn read_schematic() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-
-        let schematic = match schematic {
-            V2 (schematic) => schematic,
-            _ => panic!("Invalid schematic version"),
-        };
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
 
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
@@ -156,12 +149,7 @@ mod tests {
 
     #[test]
     fn test_parse_function() {
-        let schematic: SchematicVersioned = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-
-        let schematic = match schematic {
-            V2 (schematic) => schematic,
-            _ => panic!("Invalid schematic version"),
-        };
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
 
         assert_eq!(schematic.width as usize * schematic.height as usize * schematic.length as usize, schematic.block_data.len());
         assert_eq!(schematic.palette_max, schematic.palette.len() as i32);
@@ -169,32 +157,32 @@ mod tests {
 
     #[test]
     fn test_strip_schem() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let stripped = strip_data(&schematic);
 
-        assert_eq!(stripped.get_palette().keys().any(|k| k.contains('[')), false);
+        assert_eq!(stripped.palette.keys().any(|k| k.contains('[')), false);
     }
 
     #[test]
     fn test_match_palette() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = SpongeSchematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = match_palette(&schematic, &endstone, true);
     }
 
     #[test]
     fn test_match_palette_ignore_data() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = SpongeSchematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = match_palette(&schematic, &endstone, false);
     }
 
     #[test]
     pub fn test_big_search() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/simple.schem")).unwrap();
-        let endstone = SchematicVersioned::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
+        let endstone = SpongeSchematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
         let _ = search(schematic, &endstone, SearchBehavior {
             ignore_block_data: true,
@@ -208,8 +196,8 @@ mod tests {
 
     #[test]
     pub fn test_search() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/Random.schem")).unwrap();
-        let pattern = SchematicVersioned::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
+        let pattern = SpongeSchematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
 
         let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: true,
@@ -230,8 +218,8 @@ mod tests {
 
     #[test]
     pub fn test_search_ws() {
-        let schematic = SchematicVersioned::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
-        let pattern = SchematicVersioned::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
+        let schematic = SpongeSchematic::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
+        let pattern = SpongeSchematic::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
 
         let matches = search(schematic, &pattern, SearchBehavior {
             ignore_block_data: false,
