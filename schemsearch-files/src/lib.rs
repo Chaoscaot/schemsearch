@@ -21,92 +21,7 @@ use std::path::PathBuf;
 use nbt::{CompoundTag, Tag};
 
 #[derive(Clone, Debug)]
-pub enum SchematicVersioned {
-    V1(SpongeV1Schematic),
-    V2(SpongeV2Schematic),
-    V3(SpongeV3Schematic),
-}
-
-impl SchematicVersioned {
-    #[inline]
-    pub fn get_width(&self) -> u16 {
-        return match self {
-            SchematicVersioned::V1(schematic) => schematic.width,
-            SchematicVersioned::V2(schematic) => schematic.width,
-            SchematicVersioned::V3(schematic) => schematic.width,
-        };
-    }
-
-    #[inline]
-    pub fn get_height(&self) -> u16 {
-        return match self {
-            SchematicVersioned::V1(schematic) => schematic.height,
-            SchematicVersioned::V2(schematic) => schematic.height,
-            SchematicVersioned::V3(schematic) => schematic.height,
-        };
-    }
-
-    #[inline]
-    pub fn get_length(&self) -> u16 {
-        return match self {
-            SchematicVersioned::V1(schematic) => schematic.length,
-            SchematicVersioned::V2(schematic) => schematic.length,
-            SchematicVersioned::V3(schematic) => schematic.length,
-        };
-    }
-
-    #[inline]
-    pub fn get_palette_max(&self) -> i32 {
-        return match self {
-            SchematicVersioned::V1(schematic) => schematic.palette_max,
-            SchematicVersioned::V2(schematic) => schematic.palette_max,
-            SchematicVersioned::V3(schematic) => schematic.blocks.palette.len() as i32,
-        };
-    }
-
-    #[inline]
-    pub fn get_palette(&self) -> &HashMap<String, i32> {
-        return match self {
-            SchematicVersioned::V1(schematic) => &schematic.palette,
-            SchematicVersioned::V2(schematic) => &schematic.palette,
-            SchematicVersioned::V3(schematic) => &schematic.blocks.palette,
-        };
-    }
-
-    #[inline]
-    pub fn get_block_data(&self) -> &Vec<i32> {
-        return match self {
-            SchematicVersioned::V1(schematic) => &schematic.block_data,
-            SchematicVersioned::V2(schematic) => &schematic.block_data,
-            SchematicVersioned::V3(schematic) => &schematic.blocks.block_data,
-        };
-    }
-
-    #[inline]
-    pub fn get_block_entities(&self) -> &Vec<BlockEntity> {
-        return match self {
-            SchematicVersioned::V1(schematic) => &schematic.tile_entities,
-            SchematicVersioned::V2(schematic) => &schematic.block_entities,
-            SchematicVersioned::V3(schematic) => &schematic.blocks.block_entities,
-        };
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct SpongeV1Schematic {
-    pub metadata: CompoundTag,
-    pub width: u16,
-    pub height: u16,
-    pub length: u16,
-    pub offset: [i32; 3],
-    pub palette_max: i32,
-    pub palette: HashMap<String, i32>,
-    pub block_data: Vec<i32>,
-    pub tile_entities: Vec<BlockEntity>,
-}
-
-#[derive(Clone, Debug)]
-pub struct SpongeV2Schematic {
+pub struct SpongeSchematic {
     pub data_version: i32,
     pub metadata: CompoundTag,
     pub width: u16,
@@ -117,18 +32,6 @@ pub struct SpongeV2Schematic {
     pub palette: HashMap<String, i32>,
     pub block_data: Vec<i32>,
     pub block_entities: Vec<BlockEntity>,
-    pub entities: Option<Vec<Entity>>,
-}
-
-#[derive(Clone, Debug)]
-pub struct SpongeV3Schematic {
-    pub data_version: i32,
-    pub metadata: CompoundTag,
-    pub width: u16,
-    pub height: u16,
-    pub length: u16,
-    pub offset: [i32; 3],
-    pub blocks: BlockContainer,
     pub entities: Option<Vec<Entity>>,
 }
 
@@ -158,28 +61,27 @@ pub struct Entity {
     pub pos: [i32; 3],
 }
 
-impl SchematicVersioned {
-    pub fn load_data<R>(data: &mut R) -> Result<SchematicVersioned, String> where R: Read {
+impl SpongeSchematic {
+    pub fn load_data<R>(data: &mut R) -> Result<SpongeSchematic, String> where R: Read {
         let nbt: CompoundTag = nbt::decode::read_gzip_compound_tag(data).map_err(|e| e.to_string())?;
         let version = nbt.get_i32("Version").map_err(|e| e.to_string())?;
 
         match version {
-            1 => Ok(SchematicVersioned::V1(SpongeV1Schematic::from_nbt(nbt)?)),
-            2 => Ok(SchematicVersioned::V2(SpongeV2Schematic::from_nbt(nbt)?)),
-            3 => Ok(SchematicVersioned::V3(SpongeV3Schematic::from_nbt(nbt)?)),
+            1 => SpongeSchematic::from_nbt_1(nbt),
+            2 => SpongeSchematic::from_nbt_2(nbt),
+            3 => SpongeSchematic::from_nbt_3(nbt),
             _ => Err("Invalid schematic: Unknown Version".to_string()),
         }
     }
 
-    pub fn load(path: &PathBuf) -> Result<SchematicVersioned, String> {
+    pub fn load(path: &PathBuf) -> Result<SpongeSchematic, String> {
         let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
         Self::load_data(&mut file)
     }
-}
 
-impl SpongeV1Schematic {
-    pub fn from_nbt(nbt: CompoundTag) -> Result<Self, String> {
+    pub fn from_nbt_1(nbt: CompoundTag) -> Result<Self, String> {
         Ok(Self {
+            data_version: 0,
             metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
             width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
             height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
@@ -188,13 +90,12 @@ impl SpongeV1Schematic {
             palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
             palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-            tile_entities: read_tile_entities(nbt.get_compound_tag_vec("TileEntities").map_err(|e| e.to_string())?)?,
+            block_entities: read_tile_entities(nbt.get_compound_tag_vec("TileEntities").map_err(|e| e.to_string())?)?,
+            entities: None,
         })
     }
-}
 
-impl SpongeV2Schematic {
-    pub fn from_nbt(nbt: CompoundTag) -> Result<Self, String> {
+    pub fn from_nbt_2(nbt: CompoundTag) -> Result<Self, String> {
         Ok(Self{
             data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
             metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
@@ -209,10 +110,8 @@ impl SpongeV2Schematic {
             entities: None,
         })
     }
-}
 
-impl SpongeV3Schematic {
-    pub fn from_nbt(nbt: CompoundTag) -> Result<Self, String> {
+    pub fn from_nbt_3(nbt: CompoundTag) -> Result<Self, String> {
         let blocks = nbt.get_compound_tag("Blocks").map_err(|e| e.to_string())?;
         Ok(Self{
             data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
@@ -221,14 +120,14 @@ impl SpongeV3Schematic {
             height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
             length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
             offset: read_offset(nbt.get_i32_vec("Offset").map_err(|e| e.to_string())?)?,
-            blocks: BlockContainer {
-                palette: read_palette(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
-                block_data: read_blocks(blocks.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-                block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").map_err(|e| e.to_string())?)?,
-            },
+            palette_max: compute_palette_max(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
+            palette: read_palette(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
+            block_data: read_blocks(blocks.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
+            block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").map_err(|e| e.to_string())?)?,
             entities: None,
         })
     }
+
 }
 
 fn read_tile_entities(tag: Vec<&CompoundTag>) -> Result<Vec<BlockEntity>, String> {
@@ -260,6 +159,14 @@ fn read_palette(p: &CompoundTag) -> HashMap<String, i32> {
         };
     }
     palette
+}
+
+#[inline]
+fn compute_palette_max(palette: &CompoundTag) -> i32 {
+    palette.iter().map(|(_, v)| v).filter_map(|v| match v {
+        Tag::Int(n) => Some(*n),
+        _ => None,
+    }).max().unwrap_or(0)
 }
 
 #[inline]

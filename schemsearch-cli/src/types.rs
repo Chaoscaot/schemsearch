@@ -15,11 +15,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#[cfg(feature = "sql")]
 use std::io::Cursor;
 use std::path::PathBuf;
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
-use schemsearch_files::SchematicVersioned;
+#[cfg(feature = "sql")]
+use schemsearch_files::SpongeSchematic;
 #[cfg(feature = "sql")]
 use schemsearch_sql::{load_schemdata, SchematicNode};
 
@@ -46,9 +48,9 @@ pub struct SqlSchematicSupplier {
 
 #[cfg(feature = "sql")]
 impl SqlSchematicSupplier {
-    pub fn get_schematic(&self) -> Result<SchematicVersioned, String> {
+    pub fn get_schematic(&self) -> Result<SpongeSchematic, String> {
         let mut schemdata = block_on(load_schemdata(self.node.id));
-        SchematicVersioned::load_data(&mut Cursor::new(schemdata.as_mut_slice()))
+        SpongeSchematic::load_data(&mut Cursor::new(schemdata.as_mut_slice()))
     }
 
     pub fn get_name(&self) -> String {

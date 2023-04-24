@@ -19,7 +19,7 @@ pub mod pattern_mapper;
 
 use serde::{Serialize, Deserialize};
 use pattern_mapper::match_palette;
-use schemsearch_files::SchematicVersioned;
+use schemsearch_files::SpongeSchematic;
 use crate::pattern_mapper::match_palette_adapt;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
@@ -33,15 +33,15 @@ pub struct SearchBehavior {
 }
 
 pub fn search(
-    schem: SchematicVersioned,
-    pattern_schem: &SchematicVersioned,
+    schem: SpongeSchematic,
+    pattern_schem: &SpongeSchematic,
     search_behavior: SearchBehavior,
 ) -> Vec<Match> {
-    if schem.get_width() < pattern_schem.get_width() || schem.get_height() < pattern_schem.get_height() || schem.get_length() < pattern_schem.get_length() {
+    if schem.width < pattern_schem.width || schem.height < pattern_schem.height || schem.length < pattern_schem.length {
         return vec![];
     }
 
-    if pattern_schem.get_palette().len() > schem.get_palette().len() {
+    if pattern_schem.palette.len() > schem.palette.len() {
         return vec![];
     }
 
@@ -49,27 +49,27 @@ pub fn search(
 
     let mut matches: Vec<Match> = Vec::new();
 
-    let pattern_data = pattern_schem.get_block_data().as_slice();
+    let pattern_data = pattern_schem.block_data.as_slice();
 
     let schem_data = if search_behavior.ignore_block_data {
-        match_palette_adapt(&schem, &pattern_schem.get_palette(), search_behavior.ignore_block_data)
+        match_palette_adapt(&schem, &pattern_schem.palette, search_behavior.ignore_block_data)
     } else {
-        schem.get_block_data().clone()
+        schem.block_data.clone()
     };
 
     let schem_data = schem_data.as_slice();
 
-    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.get_palette().get("minecraft:air").unwrap_or(&-1) } else { &-1};
+    let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
     let pattern_blocks = pattern_data.len() as f32;
 
-    let pattern_width = pattern_schem.get_width() as usize;
-    let pattern_height = pattern_schem.get_height() as usize;
-    let pattern_length = pattern_schem.get_length() as usize;
+    let pattern_width = pattern_schem.width as usize;
+    let pattern_height = pattern_schem.height as usize;
+    let pattern_length = pattern_schem.length as usize;
 
-    let schem_width = schem.get_width() as usize;
-    let schem_height = schem.get_height() as usize;
-    let schem_length = schem.get_length() as usize;
+    let schem_width = schem.width as usize;
+    let schem_height = schem.height as usize;
+    let schem_length = schem.length as usize;
 
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {

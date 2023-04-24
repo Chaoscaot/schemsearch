@@ -39,7 +39,7 @@ use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
 use crate::types::SqlSchematicSupplier;
 use indicatif::*;
-use schemsearch_files::{SchematicVersioned};
+use schemsearch_files::SpongeSchematic;
 use crate::sinks::{OutputFormat, OutputSink};
 use crate::stderr::MaschineStdErr;
 
@@ -206,7 +206,7 @@ fn main() {
         threshold: *matches.get_one::<f32>("threshold").expect("Couldn't get threshold"),
     };
 
-    let pattern = match SchematicVersioned::load(&PathBuf::from(matches.get_one::<String>("pattern").unwrap())) {
+    let pattern = match SpongeSchematic::load(&PathBuf::from(matches.get_one::<String>("pattern").unwrap())) {
         Ok(x) => x,
         Err(e) => {
             cmd.error(ErrorKind::Io, format!("Error while loading Pattern: {}", e.to_string())).exit();
@@ -334,8 +334,8 @@ fn main() {
     }
 }
 
-fn load_schem(schem_path: &PathBuf) -> Option<SchematicVersioned> {
-    match SchematicVersioned::load(schem_path) {
+fn load_schem(schem_path: &PathBuf) -> Option<SpongeSchematic> {
+    match SpongeSchematic::load(schem_path) {
         Ok(x) => Some(x),
         Err(e) => {
             println!("Error while loading schematic ({}): {}", schem_path.to_str().unwrap(), e.to_string());
