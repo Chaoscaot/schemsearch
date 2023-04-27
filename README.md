@@ -1,5 +1,5 @@
 # schemsearch
-### A *simple* CLI tool to search in Sponge V2 Schematic files
+### A *simple* CLI tool to search in Sponge Schematic files
 
 ---
 
