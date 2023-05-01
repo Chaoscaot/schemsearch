@@ -71,6 +71,8 @@ pub fn search(
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
 
+    let matching_needed = (pattern_blocks * search_behavior.threshold) as i32;
+
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {
             for x in 0..=schem_width - pattern_width {
@@ -88,13 +90,12 @@ pub fn search(
                         }
                     }
                 }
-                let matching_percent = matching as f32 / pattern_blocks;
-                if matching_percent >= search_behavior.threshold {
+                if matching >= matching_needed {
                     matches.push(Match {
                         x: x as u16,
                         y: y as u16,
                         z: z as u16,
-                        percent: matching_percent,
+                        percent: matching as f32 / pattern_blocks,
                     });
                 }
             }
