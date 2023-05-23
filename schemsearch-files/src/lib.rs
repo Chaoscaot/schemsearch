@@ -64,7 +64,17 @@ pub struct Entity {
 impl SpongeSchematic {
     pub fn load_data<R>(data: &mut R) -> Result<SpongeSchematic, String> where R: Read {
         let nbt: CompoundTag = nbt::decode::read_gzip_compound_tag(data).map_err(|e| e.to_string())?;
-        let version = nbt.get_i32("Version").map_err(|e| e.to_string())?;
+        let version = nbt.get_i32("Version").unwrap_or_else(|_| {
+            return if nbt.contains_key("Blocks") {
+                3
+            } else if nbt.contains_key("BlockEntities") {
+                2
+            } else if nbt.contains_key("TileEntities") {
+                1
+            } else {
+                -1
+            };
+        });
 
         match version {
             1 => SpongeSchematic::from_nbt_1(nbt),
@@ -90,7 +100,7 @@ impl SpongeSchematic {
             palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
             palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-            block_entities: read_tile_entities(nbt.get_compound_tag_vec("TileEntities").map_err(|e| e.to_string())?)?,
+            block_entities: read_tile_entities(nbt.get_compound_tag_vec("TileEntities").unwrap_or_else(|_| vec![]))?,
             entities: None,
         })
     }
@@ -106,7 +116,7 @@ impl SpongeSchematic {
             palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
             palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-            block_entities: read_tile_entities(nbt.get_compound_tag_vec("BlockEntities").map_err(|e| e.to_string())?)?,
+            block_entities: read_tile_entities(nbt.get_compound_tag_vec("BlockEntities").unwrap_or_else(|_| vec![]))?,
             entities: None,
         })
     }
@@ -123,7 +133,7 @@ impl SpongeSchematic {
             palette_max: compute_palette_max(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             palette: read_palette(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             block_data: read_blocks(blocks.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-            block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").map_err(|e| e.to_string())?)?,
+            block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").unwrap_or_else(|_| vec![]))?,
             entities: None,
         })
     }

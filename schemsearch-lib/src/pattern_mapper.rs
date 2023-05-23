@@ -37,7 +37,7 @@ pub fn strip_data(schem: &SpongeSchematic) -> SpongeSchematic {
     let reverse_palette = create_reverse_palette(schem);
 
     for block in schem.block_data.iter() {
-        let block_name = reverse_palette[*block as usize].clone();
+        let block_name = reverse_palette[*block as usize];
         let block_name = block_name.split('[').next().unwrap().to_string();
 
         let entry = palette.entry(block_name).or_insert_with(|| {
@@ -61,8 +61,6 @@ pub fn strip_data(schem: &SpongeSchematic) -> SpongeSchematic {
         offset: [0; 3],
         entities: None,
     }
-
-
 }
 
 pub fn match_palette_adapt(schem: &SpongeSchematic, matching_palette: &HashMap<String, i32>, ignore_data: bool) -> Vec<i32> {
