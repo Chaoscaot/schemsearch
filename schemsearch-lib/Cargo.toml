@@ -1,6 +1,6 @@
 [package]
 name = "schemsearch-lib"
-version = "0.1.5"
+version = "0.1.6"
 edition = "2021"
 license = "AGPL-3.0-or-later"
 
@@ -10,3 +10,4 @@ license = "AGPL-3.0-or-later"
 serde = { version = "1.0.160", features = ["derive"] }
 schemsearch-files = { path = "../schemsearch-files" }
 named-binary-tag = "0.6"
+libmath = "0.2.1"

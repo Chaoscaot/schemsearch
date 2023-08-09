@@ -21,6 +21,7 @@ use serde::{Serialize, Deserialize};
 use pattern_mapper::match_palette;
 use schemsearch_files::SpongeSchematic;
 use crate::pattern_mapper::match_palette_adapt;
+use math::round::ceil;
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct SearchBehavior {
@@ -62,6 +63,7 @@ pub fn search(
     let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
     let pattern_blocks = pattern_data.len() as f32;
+    let i_pattern_blocks = pattern_blocks as i32;
 
     let pattern_width = pattern_schem.width as usize;
     let pattern_height = pattern_schem.height as usize;
@@ -71,33 +73,43 @@ pub fn search(
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
 
-    let matching_needed = (pattern_blocks * search_behavior.threshold) as i32;
+    let skip_amount = ceil((pattern_blocks * (1.0 - search_behavior.threshold)) as f64, 0) as i32;
 
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {
             for x in 0..=schem_width - pattern_width {
-                let mut matching = 0;
+                let mut not_matching = 0;
+                'outer:
                 for j in 0..pattern_height {
                     for k in 0..pattern_length {
+                        'inner:
                         for i in 0..pattern_width {
                             let index = (x + i) + schem_width * ((z + k) + (y + j) * schem_length);
                             let pattern_index = i + pattern_width * (k + j * pattern_length);
                             let data = unsafe {schem_data.get_unchecked(index) };
                             let pattern_data = unsafe { pattern_data.get_unchecked(pattern_index) };
-                            if *data == *pattern_data || (search_behavior.ignore_air && *data == *air_id) || (search_behavior.air_as_any && *pattern_data == *air_id) {
-                                matching += 1;
+                            if (search_behavior.ignore_air && *data != *air_id) || (search_behavior.air_as_any && *pattern_data != *air_id) {
+                                continue 'inner;
+                            }
+                            if *data != *pattern_data {
+                                not_matching += 1;
+                            }
+                            if not_matching >= skip_amount {
+                                break 'outer;
                             }
                         }
                     }
                 }
-                if matching >= matching_needed {
+
+                if not_matching < skip_amount {
                     matches.push(Match {
                         x: x as u16,
                         y: y as u16,
                         z: z as u16,
-                        percent: matching as f32 / pattern_blocks,
+                        percent: (i_pattern_blocks - not_matching) as f32 / pattern_blocks,
                     });
                 }
+
             }
         }
     }
@@ -105,23 +117,12 @@ pub fn search(
     return matches;
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]
 pub struct Match {
     pub x: u16,
     pub y: u16,
     pub z: u16,
     pub percent: f32,
-}
-
-impl Default for Match {
-    fn default() -> Self {
-        Self {
-            x: 0,
-            y: 0,
-            z: 0,
-            percent: 0.0,
-        }
-    }
 }
 
 #[inline]
@@ -209,7 +210,6 @@ mod tests {
             threshold: 0.9
         });
 
-        println!("{:?}", matches);
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].x, 1);
         assert_eq!(matches[0].y, 0);
@@ -231,7 +231,6 @@ mod tests {
             threshold: 0.9
         });
 
-        println!("{:?}", matches);
         assert_eq!(matches.len(), 1);
     }
 }
