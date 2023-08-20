@@ -64,10 +64,10 @@ pub fn strip_data(schem: &SpongeSchematic) -> SpongeSchematic {
 }
 
 pub fn match_palette_adapt(schem: &SpongeSchematic, matching_palette: &HashMap<String, i32>, ignore_data: bool) -> Vec<i32> {
-    let mut data: Vec<i32> = Vec::new();
+    let mut data = Vec::with_capacity(schem.block_data.len());
     let reverse_palette = create_reverse_palette(schem);
 
-    for x in schem.block_data.iter() {
+    for x in schem.block_data.as_slice().iter() {
         let blockname = reverse_palette[*x as usize];
         let blockname = if ignore_data { normalize_data(blockname, ignore_data) } else { blockname };
         let block_id = match matching_palette.get(&*blockname) {
