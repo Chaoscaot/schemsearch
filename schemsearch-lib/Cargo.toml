@@ -11,3 +11,6 @@ serde = { version = "1.0.160", features = ["derive"] }
 schemsearch-files = { path = "../schemsearch-files" }
 named-binary-tag = "0.6"
 libmath = "0.2.1"
+
+[build-dependencies]
+cc = { version = "1.0.83", features = [] }
