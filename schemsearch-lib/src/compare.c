@@ -37,27 +37,27 @@ int32_t isMatching(
 void is_matching_all(
         const int32_t *schem_data,
         const int32_t *pattern_data,
-        size_t schem_width,
-        size_t schem_height,
-        size_t schem_length,
-        size_t pattern_width,
-        size_t pattern_height,
-        size_t pattern_length,
+        int32_t schem_width,
+        int32_t schem_height,
+        int32_t schem_length,
+        int32_t pattern_width,
+        int32_t pattern_height,
+        int32_t pattern_length,
         int32_t *result
 ) {
-    for (size_t pz = 0; pz < pattern_length; ++pz) {
-        size_t maxZ = schem_length - pattern_length + pz + 1;
-        for (size_t py = 0; py < pattern_height; ++py) {
-            size_t maxY = schem_height - pattern_height + py + 1;
-            for (size_t px = 0; px < pattern_width; ++px) {
+    for (int32_t pz = 0; pz < pattern_length; ++pz) {
+        int32_t maxZ = schem_length - pattern_length + pz + 1;
+        for (int32_t py = 0; py < pattern_height; ++py) {
+            int32_t maxY = schem_height - pattern_height + py + 1;
+            for (int32_t px = 0; px < pattern_width; ++px) {
                 int32_t pv = pattern_data[px + py * pattern_width + pz * pattern_width * pattern_height];
-                size_t maxX = schem_width - pattern_width + px + 1;
-                for (size_t z = pz; z < maxZ; ++z) {
-                    size_t sourceOffsetZ = z * schem_width * schem_height;
-                    size_t resultOffsetZ = (z - pz) * schem_width * schem_height - py * schem_width;
-                    for (size_t y = py; y < maxY; ++y) {
-                        size_t sourceOffsetY = sourceOffsetZ + y * schem_width;
-                        size_t resultOffsetY = resultOffsetZ + y * schem_width - px;
+                int32_t maxX = schem_width - pattern_width + px + 1;
+                for (int32_t z = pz; z < maxZ; ++z) {
+                    int32_t sourceOffsetZ = z * schem_width * schem_height;
+                    int32_t resultOffsetZ = (z - pz) * schem_width * schem_height - py * schem_width;
+                    for (int32_t y = py; y < maxY; ++y) {
+                        int32_t sourceOffsetY = sourceOffsetZ + y * schem_width;
+                        int32_t resultOffsetY = resultOffsetZ + y * schem_width - px;
                         for (size_t x = px; x < maxX; ++x) {
                             result[resultOffsetY + x] += schem_data[sourceOffsetY + x] == pv;
                         }

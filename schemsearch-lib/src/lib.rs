@@ -53,12 +53,12 @@ extern "C" {
     pub fn is_matching_all(
         schem_data: *const i32,
         pattern_data: *const i32,
-        schem_width: usize,
-        schem_height: usize,
-        schem_length: usize,
-        pattern_width: usize,
-        pattern_height: usize,
-        pattern_length: usize,
+        schem_width: i32,
+        schem_height: i32,
+        schem_length: i32,
+        pattern_width: i32,
+        pattern_height: i32,
+        pattern_length: i32,
         result: *mut i32
     );
 }
@@ -149,12 +149,12 @@ pub fn search(
         is_matching_all(
             schem_data,
             pattern_data,
-            schem_width,
-            schem_height,
-            schem_length,
-            pattern_width,
-            pattern_height,
-            pattern_length,
+            schem_width as i32,
+            schem_height as i32,
+            schem_length as i32,
+            pattern_width as i32,
+            pattern_height as i32,
+            pattern_length as i32,
             result.as_mut_ptr()
         );
     }
