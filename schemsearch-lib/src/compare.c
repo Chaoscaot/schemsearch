@@ -59,7 +59,7 @@ void is_matching_all(
                     for (int32_t y = py; y < maxY; ++y) {
                         int32_t sourceOffsetY = sourceOffsetZ + y * schem_width;
                         int32_t resultOffsetY = resultOffsetZ + y * schem_width - px;
-                        for (size_t x = px; x < maxX; ++x) {
+                        for (int32_t x = px; x < maxX; ++x) {
                             result[resultOffsetY + x] += schem_data[sourceOffsetY + x] == pv;
                         }
                     }
