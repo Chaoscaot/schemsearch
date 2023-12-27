@@ -159,8 +159,6 @@ pub fn search(
         );
     }
 
-    dbg!(result.clone());
-
     result.into_iter().enumerate().filter(|(_, matching_count)| *matching_count >= i_pattern_blocks - skip_amount).for_each(|(i, matching_count)| {
         let percent = matching_count as f32 / pattern_blocks;
         let x = i % schem_width;

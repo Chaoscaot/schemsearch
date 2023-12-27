@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stddef.h>
 
 int32_t isMatching(
         const int32_t *schem_data,
