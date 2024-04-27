@@ -71,7 +71,7 @@ impl OutputFormat {
     pub fn start(&self, total: u32, search_behavior: &SearchBehavior, start_time: u128) -> String {
         match self {
             OutputFormat::Text => format!("Starting search in {} schematics\n", total),
-            OutputFormat::CSV => format!("Name,X,Y,Z,Percent\n"),
+            OutputFormat::CSV => "Name,X,Y,Z,Percent\n".to_owned(),
             OutputFormat::JSON => format!("{}\n", serde_json::to_string(&JsonEvent::Init(InitEvent {
                 total,
                 search_behavior: search_behavior.clone(),
