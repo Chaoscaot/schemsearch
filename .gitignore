@@ -3,3 +3,5 @@
 /.idea/
 /SchemSearch.class
 /SchemSearch.h
+/schemsearch-lib/src/.idea/
+/schemsearch-lib/src/cmake-build-debug/
