@@ -26,17 +26,21 @@ use schemsearch_files::SpongeSchematic;
 use schemsearch_sql::{load_schemdata, SchematicNode};
 
 pub enum SchematicSupplierType {
-    PATH(Box<PathSchematicSupplier>),
+    PATH(PathSchematicSupplier),
     #[cfg(feature = "sql")]
     SQL(SqlSchematicSupplier),
+}
+
+pub trait SchematicSupplier {
+    fn get_name(&self) -> String;
 }
 
 pub struct PathSchematicSupplier {
     pub path: PathBuf,
 }
 
-impl PathSchematicSupplier {
-    pub fn get_name(&self) -> String {
+impl SchematicSupplier for PathSchematicSupplier {
+    fn get_name(&self) -> String {
         self.path.file_stem().unwrap().to_str().unwrap().to_string()
     }
 }
@@ -52,8 +56,13 @@ impl SqlSchematicSupplier {
         let mut schemdata = block_on(load_schemdata(self.node.id));
         SpongeSchematic::load_data(&mut Cursor::new(schemdata.as_mut_slice()))
     }
+}
 
-    pub fn get_name(&self) -> String {
+#[cfg(feature = "sql")]
+impl SchematicSupplier for SqlSchematicSupplier {
+    fn get_name(&self) -> String {
         format!("{} ({})", self.node.name, self.node.id)
     }
 }
+
+

@@ -26,8 +26,8 @@ use clap::{command, Arg, ArgAction, ValueHint};
 use std::path::PathBuf;
 use std::str::FromStr;
 use clap::error::ErrorKind;
-use schemsearch_lib::{Match, search, SearchBehavior};
-use crate::types::{PathSchematicSupplier, SchematicSupplierType};
+use schemsearch_lib::{Match, SearchBehavior};
+use crate::types::{PathSchematicSupplier, SchematicSupplier, SchematicSupplierType};
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
 use rayon::prelude::*;
@@ -42,15 +42,17 @@ use indicatif::*;
 use schemsearch_files::SpongeSchematic;
 use crate::sinks::{OutputFormat, OutputSink};
 use crate::stderr::MaschineStdErr;
+use schemsearch_lib::nbt_search::has_invalid_nbt;
+use schemsearch_lib::search::search;
 
 fn main() {
     #[allow(unused_mut)]
-    let mut cmd = command!("schemsearch")
+        let mut cmd = command!("schemsearch")
         .arg(
             Arg::new("pattern")
                 .help("The pattern to search for")
-                .required(true)
                 .value_hint(ValueHint::FilePath)
+                .required_unless_present("invalid-nbt")
                 .action(ArgAction::Set),
         )
         .arg(
@@ -95,6 +97,13 @@ fn main() {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("invalid-nbt")
+                .help("Search for Schematics with Invalid or missing NBT data")
+                .short('I')
+                .long("invalid-nbt")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
             Arg::new("output")
                 .help("The output format and path [Format:Path] available formats: text, json, csv; available paths: std, err, (file path)")
                 .short('o')
@@ -134,7 +143,7 @@ fn main() {
         )
         .arg(
             Arg::new("threads")
-                .help("The number of threads to use [0 = Available Threads]")
+                .help("The number of threads to use [0 = all Available Threads]")
                 .short('T')
                 .long("threads")
                 .action(ArgAction::Set)
@@ -163,9 +172,9 @@ fn main() {
         .bin_name("schemsearch");
 
     #[cfg(feature = "sql")]
-    let mut cmd = cmd
+        let mut cmd = cmd
         .arg(
-                Arg::new("sql")
+            Arg::new("sql")
                 .help("Use the SteamWar SQL Database")
                 .short('s')
                 .long("sql")
@@ -204,18 +213,22 @@ fn main() {
         air_as_any: matches.get_flag("air-as-any"),
         ignore_entities: matches.get_flag("ignore-entities"),
         threshold: *matches.get_one::<f32>("threshold").expect("Couldn't get threshold"),
+        invalid_nbt: matches.get_flag("invalid-nbt"),
     };
 
-    let pattern = match SpongeSchematic::load(&PathBuf::from(matches.get_one::<String>("pattern").unwrap())) {
-        Ok(x) => x,
-        Err(e) => {
-            cmd.error(ErrorKind::Io, format!("Error while loading Pattern: {}", e.to_string())).exit();
-        }
+    let pattern = match matches.get_one::<String>("pattern") {
+        Some(p) => match SpongeSchematic::load(&PathBuf::from(p)) {
+            Ok(x) => Some(x),
+            Err(e) => {
+                cmd.error(ErrorKind::Io, format!("Error while loading Pattern: {}", e.to_string())).exit();
+            }
+        },
+        None => None,
     };
 
     let mut schematics: Vec<SchematicSupplierType> = Vec::new();
     match matches.get_many::<String>("schematic") {
-        None => {},
+        None => {}
         Some(x) => {
             let paths = x.map(|x| PathBuf::from(x));
             for path in paths {
@@ -226,12 +239,12 @@ fn main() {
                         .filter(|x| x.path().is_file())
                         .filter(|x| x.path().extension().unwrap().to_str().unwrap() == "schem")
                         .for_each(|x| {
-                            schematics.push(SchematicSupplierType::PATH(Box::new(PathSchematicSupplier {
+                            schematics.push(SchematicSupplierType::PATH(PathSchematicSupplier {
                                 path: x.path(),
-                            })))
+                            }))
                         });
                 } else if path.extension().unwrap().to_str().unwrap() == "schem" {
-                    schematics.push(SchematicSupplierType::PATH(Box::new(PathSchematicSupplier { path })));
+                    schematics.push(SchematicSupplierType::PATH(PathSchematicSupplier { path }));
                 }
             }
         }
@@ -247,7 +260,7 @@ fn main() {
             filter = filter.name(x.collect());
         }
         for schem in block_on(load_all_schematics(filter)) {
-            schematics.push(SchematicSupplierType::SQL(SqlSchematicSupplier{
+            schematics.push(SchematicSupplierType::SQL(SqlSchematicSupplier {
                 node: schem
             }))
         };
@@ -282,28 +295,20 @@ fn main() {
                     Some(x) => x,
                     None => return SearchResult {
                         name: schem.get_name(),
-                        matches: Vec::default()
+                        matches: Vec::default(),
                     }
                 };
-                SearchResult {
-                    name: schem.get_name(),
-                    matches: search(schematic, &pattern, search_behavior)
-                }
+                search_in_schem(schematic, pattern.as_ref(), search_behavior, schem)
             }
             #[cfg(feature = "sql")]
             SchematicSupplierType::SQL(schem) => {
                 match schem.get_schematic() {
-                    Ok(schematic) => {
-                        SearchResult {
-                            name: schem.get_name(),
-                            matches: search(schematic, &pattern, search_behavior)
-                        }
-                    }
+                    Ok(schematic) => search_in_schem(schematic, pattern.as_ref(), search_behavior, schem),
                     Err(e) => {
                         eprintln!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
                         SearchResult {
                             name: schem.get_name(),
-                            matches: Vec::default()
+                            matches: Vec::default(),
                         }
                     }
                 }
@@ -331,6 +336,32 @@ fn main() {
     for x in &mut output {
         write!(x.1, "{}", x.0.end(end.duration_since(start).as_millis())).unwrap();
         x.1.flush().unwrap();
+    }
+}
+
+fn search_in_schem(schematic: SpongeSchematic, pattern: Option<&SpongeSchematic>, search_behavior: SearchBehavior, schem: &impl SchematicSupplier) -> SearchResult {
+    if search_behavior.invalid_nbt {
+        if has_invalid_nbt(schematic) {
+            SearchResult {
+                name: schem.get_name(),
+                matches: vec![Match {
+                    x: 0,
+                    y: 0,
+                    z: 0,
+                    percent: 1.0,
+                }],
+            }
+        } else {
+            SearchResult {
+                name: schem.get_name(),
+                matches: vec![],
+            }
+        }
+    } else {
+        SearchResult {
+            name: schem.get_name(),
+            matches: search(schematic, pattern.unwrap(), search_behavior),
+        }
     }
 }
 
