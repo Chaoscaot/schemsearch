@@ -43,40 +43,39 @@ pub fn search(
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
 
+    let mut pattern_vec_length = 0;
+
+    for i in 0..pattern_schem.block_data.len() {
+        pattern_vec_length += unsafe { *pattern_data.add(i) * *pattern_data.add(i) };
+    }
+
     let skip_amount = ceil((pattern_blocks * (1.0 - search_behavior.threshold)) as f64, 0) as i32;
 
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {
             for x in 0..=schem_width - pattern_width {
-                let mut not_matching = 0;
-                'outer:
-                for j in 0..pattern_height {
-                    for k in 0..pattern_length {
-                        'inner:
-                        for i in 0..pattern_width {
-                            let index = (x + i) + schem_width * ((z + k) + (y + j) * schem_length);
-                            let pattern_index = i + pattern_width * (k + j * pattern_length);
-                            let data = unsafe { *schem_data.add(index) };
-                            let pattern_data = unsafe { *pattern_data.add(pattern_index) };
-                            if (search_behavior.ignore_air && data != *air_id) || (search_behavior.air_as_any && pattern_data != *air_id) {
-                                continue 'inner;
-                            }
-                            if data != pattern_data {
-                                not_matching += 1;
-                                if not_matching >= skip_amount {
-                                    break 'outer;
-                                }
-                            }
-                        }
-                    }
+                let mut dot_p: i32 = 0;
+                let mut schem_vec_length = 0;
+
+                for i in 0..pattern_schem.block_data.len() {
+                    let k = i % pattern_width;
+                    let j = (i / pattern_width) % pattern_length;
+                    let m = i / (pattern_width * pattern_length);
+
+                    let schem_index = (x + k) + schem_width * ((z + j) + (y + m) * schem_length);
+                    dot_p += unsafe { *pattern_data.add(i) * *schem_data.add(schem_index) };
+
+                    schem_vec_length += unsafe { *schem_data.add(schem_index) * *schem_data.add(schem_index) };
                 }
 
-                if not_matching < skip_amount {
+                let sim = dot_p as f32 / ((pattern_vec_length as f32).sqrt() * (schem_vec_length as f32).sqrt());
+
+                if sim > search_behavior.threshold {
                     matches.push(Match {
                         x: x as u16,
                         y: y as u16,
                         z: z as u16,
-                        percent: (i_pattern_blocks - not_matching) as f32 / pattern_blocks,
+                        percent: sim,
                     });
                 }
             }
