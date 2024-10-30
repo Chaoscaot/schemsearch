@@ -43,13 +43,7 @@ pub fn search(
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
 
-    let mut pattern_vec_length = 0;
-
-    for i in 0..pattern_schem.block_data.len() {
-        pattern_vec_length += unsafe { *pattern_data.add(i) * *pattern_data.add(i) };
-    }
-
-    let skip_amount = ceil((pattern_blocks * (1.0 - search_behavior.threshold)) as f64, 0) as i32;
+    let pattern_vec_length = pattern_schem.block_data.iter().map(|x| x * x).sum::<i32>();
 
     for y in 0..=schem_height - pattern_height {
         for z in 0..=schem_length - pattern_length {
@@ -57,15 +51,16 @@ pub fn search(
                 let mut dot_p: i32 = 0;
                 let mut schem_vec_length = 0;
 
-                for i in 0..pattern_schem.block_data.len() {
-                    let k = i % pattern_width;
-                    let j = (i / pattern_width) % pattern_length;
-                    let m = i / (pattern_width * pattern_length);
+                for j in 0..pattern_height {
+                    for k in 0..pattern_length {
+                        for i in 0..pattern_width {
+                            let index = (x + i) + schem_width * ((z + k) + (y + j) * schem_length);
+                            let pattern_index = i + pattern_width * (k + j * pattern_length);
 
-                    let schem_index = (x + k) + schem_width * ((z + j) + (y + m) * schem_length);
-                    dot_p += unsafe { *pattern_data.add(i) * *schem_data.add(schem_index) };
-
-                    schem_vec_length += unsafe { *schem_data.add(schem_index) * *schem_data.add(schem_index) };
+                            dot_p += unsafe { *pattern_data.add(pattern_index) * *schem_data.add(index) };
+                            schem_vec_length += unsafe { *schem_data.add(index) * *schem_data.add(index) };
+                        }
+                    }
                 }
 
                 let sim = dot_p as f32 / ((pattern_vec_length as f32).sqrt() * (schem_vec_length as f32).sqrt());
