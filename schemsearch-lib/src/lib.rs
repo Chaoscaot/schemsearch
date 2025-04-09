@@ -84,15 +84,7 @@ mod tests {
         let schematic = SpongeSchematic::load(&PathBuf::from("../tests/simple.schem")).unwrap();
         let endstone = SpongeSchematic::load(&PathBuf::from("../tests/endstone.schem")).unwrap();
 
-        let _ = search(schematic, &endstone, SearchBehavior {
-            ignore_block_data: true,
-            ignore_block_entities: true,
-            ignore_entities: true,
-            ignore_air: false,
-            air_as_any: false,
-            threshold: 0.9,
-            invalid_nbt: false
-        });
+        let _ = search(schematic, &endstone, SearchBehavior::default());
     }
 
     #[test]
@@ -100,15 +92,7 @@ mod tests {
         let schematic = SpongeSchematic::load(&PathBuf::from("../tests/Random.schem")).unwrap();
         let pattern = SpongeSchematic::load(&PathBuf::from("../tests/Pattern.schem")).unwrap();
 
-        let matches = search(schematic, &pattern, SearchBehavior {
-            ignore_block_data: true,
-            ignore_block_entities: true,
-            ignore_entities: true,
-            ignore_air: false,
-            air_as_any: false,
-            threshold: 0.9,
-            invalid_nbt: false
-        });
+        let matches = search(schematic, &pattern, SearchBehavior::default());
 
         assert_eq!(matches.len(), 1);
         assert_eq!(matches[0].x, 1);
@@ -122,15 +106,7 @@ mod tests {
         let schematic = SpongeSchematic::load(&PathBuf::from("../tests/warships/GreyFly-by-Bosslar.schem")).unwrap();
         let pattern = SpongeSchematic::load(&PathBuf::from("../tests/gray_castle_complex.schem")).unwrap();
 
-        let matches = search(schematic, &pattern, SearchBehavior {
-            ignore_block_data: false,
-            ignore_block_entities: false,
-            ignore_entities: false,
-            ignore_air: false,
-            air_as_any: false,
-            threshold: 0.9,
-            invalid_nbt: false
-        });
+        let matches = search(schematic, &pattern, SearchBehavior::default());
 
         assert_eq!(matches.len(), 1);
     }

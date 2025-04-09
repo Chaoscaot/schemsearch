@@ -1,5 +1,5 @@
 use std::sync::OnceLock;
-use ocl::{Buffer, MemFlags, ProQue, Platform};
+use ocl::{Buffer, MemFlags, ProQue, core};
 use ocl::SpatialDims::Three;
 use schemsearch_common::{Match, SearchBehavior};
 use math::round::ceil;
@@ -9,7 +9,7 @@ const KERNEL: &str = include_str!("kernel.cl");
 static PRO_QUEU_CELL: OnceLock<ProQue> = OnceLock::new();
 
 pub fn ocl_available() -> bool {
-    !Platform::list().is_empty()
+    core::default_platform().is_ok()
 }
 
 pub fn ocl_search(

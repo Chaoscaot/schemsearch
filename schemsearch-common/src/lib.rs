@@ -9,6 +9,22 @@ pub struct SearchBehavior {
     pub ignore_entities: bool,
     pub threshold: f32,
     pub invalid_nbt: bool,
+    pub use_cpu: bool,
+}
+
+impl Default for SearchBehavior {
+    fn default() -> Self {
+        SearchBehavior {
+            ignore_block_data: false,
+            ignore_block_entities: false,
+            ignore_air: false,
+            air_as_any: false,
+            ignore_entities: false,
+            threshold: 0.9,
+            invalid_nbt: false,
+            use_cpu: false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, Serialize)]

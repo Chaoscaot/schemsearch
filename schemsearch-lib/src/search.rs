@@ -40,8 +40,8 @@ pub fn search(
     let schem_width = schem.width as usize;
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
-    
-    if ocl_available() { 
+
+    if !search_behavior.use_cpu && ocl_available() {
         return ocl_search(schem_data.as_slice(), [schem_width, schem_height, schem_length], pattern_schem.block_data.as_slice(), [pattern_width, pattern_height, pattern_length], *air_id, search_behavior).unwrap()
     }
 

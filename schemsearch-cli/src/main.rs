@@ -168,6 +168,13 @@ fn main() {
                 .default_value("50")
                 .value_parser(|s: &str| s.parse::<usize>().map_err(|e| e.to_string())),
         )
+        .arg(
+            Arg::new("cpu")
+                .help("Force CPU Matching, skip OpenCL checks")
+                .short('c')
+                .long("force-cpu")
+                .action(ArgAction::SetTrue),
+        )
         .about("Searches for a pattern in a schematic")
         .bin_name("schemsearch");
 
@@ -214,6 +221,7 @@ fn main() {
         ignore_entities: matches.get_flag("ignore-entities"),
         threshold: *matches.get_one::<f32>("threshold").expect("Couldn't get threshold"),
         invalid_nbt: matches.get_flag("invalid-nbt"),
+        use_cpu: matches.get_flag("use-cpu"),
     };
 
     let pattern = match matches.get_one::<String>("pattern") {
