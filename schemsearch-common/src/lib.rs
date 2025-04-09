@@ -9,7 +9,7 @@ pub struct SearchBehavior {
     pub ignore_entities: bool,
     pub threshold: f32,
     pub invalid_nbt: bool,
-    pub use_cpu: bool,
+    pub opencl: bool,
 }
 
 impl Default for SearchBehavior {
@@ -22,7 +22,7 @@ impl Default for SearchBehavior {
             ignore_entities: false,
             threshold: 0.9,
             invalid_nbt: false,
-            use_cpu: false,
+            opencl: false,
         }
     }
 }

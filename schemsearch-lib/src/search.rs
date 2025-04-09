@@ -1,16 +1,9 @@
-use lazy_static::lazy_static;
 use math::round::ceil;
 use schemsearch_common::Match;
 use schemsearch_files::SpongeSchematic;
-use schemsearch_ocl_matcher::{ocl_available, ocl_search};
+use schemsearch_ocl_matcher::ocl_search;
 use crate::{SearchBehavior};
 use crate::pattern_mapper::{match_palette, match_palette_adapt};
-
-lazy_static! {
-    static ref OPENCL_AVAILABLE: bool = {
-        ocl_available()
-    };
-}
 
 pub fn search(
     schem: SpongeSchematic,
@@ -48,7 +41,7 @@ pub fn search(
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
 
-    if !search_behavior.use_cpu && *OPENCL_AVAILABLE {
+    if search_behavior.opencl {
         return ocl_search(schem_data.as_slice(), [schem_width, schem_height, schem_length], pattern_schem.block_data.as_slice(), [pattern_width, pattern_height, pattern_length], *air_id, search_behavior).unwrap()
     }
 
