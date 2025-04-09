@@ -1,9 +1,12 @@
+use std::sync::OnceLock;
 use ocl::{Buffer, MemFlags, ProQue, Platform};
 use ocl::SpatialDims::Three;
 use schemsearch_common::{Match, SearchBehavior};
 use math::round::ceil;
 
 const KERNEL: &str = include_str!("kernel.cl");
+
+static PRO_QUEU_CELL: OnceLock<ProQue> = OnceLock::new();
 
 pub fn ocl_available() -> bool {
     !Platform::list().is_empty()
@@ -40,10 +43,15 @@ fn search_ocl(
     
     let skip_amount = ceil((pattern_blocks * (1.0 - search_behavior.threshold)) as f64, 0) as i32;
 
-    let pro_que = ProQue::builder()
-        .src(KERNEL)
-        .dims(Three(schem_width, schem_height, schem_length))
-        .build()?;
+    let cell = &PRO_QUEU_CELL;
+    let mut pro_que = cell.get_or_init(|| {
+        ProQue::builder()
+            .src(KERNEL)
+            .build().unwrap()
+    }).clone();
+
+
+    pro_que.set_dims(Three(schem_width, schem_height, schem_length));
 
     let buffer = Buffer::builder()
         .queue(pro_que.queue().clone())
