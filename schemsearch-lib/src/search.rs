@@ -1,6 +1,8 @@
 use math::round::ceil;
+use schemsearch_common::Match;
 use schemsearch_files::SpongeSchematic;
-use crate::{Match, SearchBehavior};
+use schemsearch_ocl_matcher::{ocl_available, ocl_search};
+use crate::{SearchBehavior};
 use crate::pattern_mapper::{match_palette, match_palette_adapt};
 
 pub fn search(
@@ -20,15 +22,11 @@ pub fn search(
 
     let mut matches: Vec<Match> = Vec::with_capacity(4);
 
-    let pattern_data = pattern_schem.block_data.as_ptr();
-
     let schem_data = if search_behavior.ignore_block_data {
         match_palette_adapt(&schem, &pattern_schem.palette, search_behavior.ignore_block_data)
     } else {
         schem.block_data
     };
-
-    let schem_data = schem_data.as_ptr();
 
     let air_id = if search_behavior.ignore_air || search_behavior.air_as_any { pattern_schem.palette.get("minecraft:air").unwrap_or(&-1) } else { &-1};
 
@@ -42,6 +40,14 @@ pub fn search(
     let schem_width = schem.width as usize;
     let schem_height = schem.height as usize;
     let schem_length = schem.length as usize;
+    
+    if ocl_available() { 
+        return ocl_search(schem_data.as_slice(), [schem_width, schem_height, schem_length], pattern_schem.block_data.as_slice(), [pattern_width, pattern_height, pattern_length], *air_id, search_behavior).unwrap()
+    }
+
+    let schem_data = schem_data.as_ptr();
+
+    let pattern_data = pattern_schem.block_data.as_ptr();
 
     let skip_amount = ceil((pattern_blocks * (1.0 - search_behavior.threshold)) as f64, 0) as i32;
 

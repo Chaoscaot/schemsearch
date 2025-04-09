@@ -2,11 +2,9 @@
 members = [
     "schemsearch-cli",
     "schemsearch-lib",
-    "schemsearch-faster",
     "schemsearch-files",
     "schemsearch-sql",
-    "schemsearch-java"
-]
+    "schemsearch-ocl-matcher"]
 resolver = "2"
 
 [profile.small]

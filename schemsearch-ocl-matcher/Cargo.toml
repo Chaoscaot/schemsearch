@@ -1,0 +1,9 @@
+[package]
+name = "schemsearch-ocl-matcher"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+schemsearch-common = { path = "../schemsearch-common" }
+ocl = "0.19.7"
+libmath = "0.2.1"

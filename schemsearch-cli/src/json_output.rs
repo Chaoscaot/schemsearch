@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use schemsearch_lib::{Match, SearchBehavior};
+use schemsearch_common::{Match, SearchBehavior};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "event")]

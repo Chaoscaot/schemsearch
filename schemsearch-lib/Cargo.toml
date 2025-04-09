@@ -9,6 +9,8 @@ license = "AGPL-3.0-or-later"
 [dependencies]
 serde = { version = "1.0.160", features = ["derive"] }
 schemsearch-files = { path = "../schemsearch-files" }
+schemsearch-common = { path = "../schemsearch-common" }
+schemsearch-ocl-matcher = { path = "../schemsearch-ocl-matcher" }
 named-binary-tag = "0.6"
 libmath = "0.2.1"
 lazy_static = "1.4.0"

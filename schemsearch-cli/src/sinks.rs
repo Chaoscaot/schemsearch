@@ -4,7 +4,7 @@ use std::str::FromStr;
 use std::io::Write;
 use std::time::Duration;
 use indicatif::HumanDuration;
-use schemsearch_lib::{Match, SearchBehavior};
+use schemsearch_common::{Match, SearchBehavior};
 use crate::json_output::{EndEvent, FoundEvent, InitEvent, JsonEvent};
 
 #[derive(Debug, Clone)]

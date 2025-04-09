@@ -26,7 +26,6 @@ use clap::{command, Arg, ArgAction, ValueHint};
 use std::path::PathBuf;
 use std::str::FromStr;
 use clap::error::ErrorKind;
-use schemsearch_lib::{Match, SearchBehavior};
 use crate::types::{PathSchematicSupplier, SchematicSupplier, SchematicSupplierType};
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
@@ -39,6 +38,7 @@ use schemsearch_sql::load_all_schematics;
 #[cfg(feature = "sql")]
 use crate::types::SqlSchematicSupplier;
 use indicatif::*;
+use schemsearch_common::{Match, SearchBehavior};
 use schemsearch_files::SpongeSchematic;
 use crate::sinks::{OutputFormat, OutputSink};
 use crate::stderr::MaschineStdErr;
