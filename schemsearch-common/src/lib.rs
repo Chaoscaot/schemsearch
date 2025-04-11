@@ -34,3 +34,14 @@ pub struct Match {
     pub z: u16,
     pub percent: f32,
 }
+
+#[macro_export]
+macro_rules! time {
+    ($name:ident, $body:block) => {{
+        let start = std::time::Instant::now();
+        let result = $body;
+        let duration = start.elapsed();
+        println!("{} took {:?}", stringify!($name), duration);
+        result
+    }};
+}

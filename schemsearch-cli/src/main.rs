@@ -15,35 +15,35 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-mod types;
 mod json_output;
 mod sinks;
 mod stderr;
+mod types;
 
-use std::fmt::Debug;
-use std::io::Write;
-use clap::{command, Arg, ArgAction, ValueHint};
-use std::path::PathBuf;
-use std::str::FromStr;
-use clap::error::ErrorKind;
+use crate::sinks::{OutputFormat, OutputSink};
+use crate::stderr::MaschineStdErr;
+#[cfg(feature = "sql")]
+use crate::types::SqlSchematicSupplier;
 use crate::types::{PathSchematicSupplier, SchematicSupplier, SchematicSupplierType};
+use clap::error::ErrorKind;
+use clap::{command, Arg, ArgAction, ValueHint};
 #[cfg(feature = "sql")]
 use futures::executor::block_on;
+use indicatif::*;
 use rayon::prelude::*;
 use rayon::ThreadPoolBuilder;
+use schemsearch_common::{Match, SearchBehavior};
+use schemsearch_files::SpongeSchematic;
+use schemsearch_lib::nbt_search::has_invalid_nbt;
+use schemsearch_lib::search::search;
 #[cfg(feature = "sql")]
 use schemsearch_sql::filter::SchematicFilter;
 #[cfg(feature = "sql")]
 use schemsearch_sql::load_all_schematics;
-#[cfg(feature = "sql")]
-use crate::types::SqlSchematicSupplier;
-use indicatif::*;
-use schemsearch_common::{Match, SearchBehavior};
-use schemsearch_files::SpongeSchematic;
-use crate::sinks::{OutputFormat, OutputSink};
-use crate::stderr::MaschineStdErr;
-use schemsearch_lib::nbt_search::has_invalid_nbt;
-use schemsearch_lib::search::search;
+use std::fmt::Debug;
+use std::io::Write;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 fn main() {
     #[allow(unused_mut)]
@@ -179,7 +179,7 @@ fn main() {
         .bin_name("schemsearch");
 
     #[cfg(feature = "sql")]
-        let mut cmd = cmd
+    let mut cmd = cmd
         .arg(
             Arg::new("sql")
                 .help("Use the SteamWar SQL Database")
@@ -219,7 +219,9 @@ fn main() {
         ignore_air: matches.get_flag("ignore-air"),
         air_as_any: matches.get_flag("air-as-any"),
         ignore_entities: matches.get_flag("ignore-entities"),
-        threshold: *matches.get_one::<f32>("threshold").expect("Couldn't get threshold"),
+        threshold: *matches
+            .get_one::<f32>("threshold")
+            .expect("Couldn't get threshold"),
         invalid_nbt: matches.get_flag("invalid-nbt"),
         opencl: matches.get_flag("opencl"),
     };
@@ -228,7 +230,11 @@ fn main() {
         Some(p) => match SpongeSchematic::load(&PathBuf::from(p)) {
             Ok(x) => Some(x),
             Err(e) => {
-                cmd.error(ErrorKind::Io, format!("Error while loading Pattern: {}", e.to_string())).exit();
+                cmd.error(
+                    ErrorKind::Io,
+                    format!("Error while loading Pattern: {}", e.to_string()),
+                )
+                .exit();
             }
         },
         None => None,
@@ -269,60 +275,103 @@ fn main() {
         }
         for schem in block_on(load_all_schematics(filter)) {
             schematics.push(SchematicSupplierType::SQL(SqlSchematicSupplier {
-                node: schem
+                node: schem,
             }))
-        };
+        }
     }
 
     if schematics.is_empty() {
-        cmd.error(ErrorKind::MissingRequiredArgument, "No schematics specified").exit();
+        cmd.error(
+            ErrorKind::MissingRequiredArgument,
+            "No schematics specified",
+        )
+        .exit();
     }
 
-    let output: Vec<&(OutputFormat, OutputSink)> = matches.get_many::<(OutputFormat, OutputSink)>("output").expect("Error").collect();
-    let mut output: Vec<(OutputFormat, Box<dyn Write>)> = output.into_iter().map(|x| (x.0.clone(), x.1.output())).collect();
+    let output: Vec<&(OutputFormat, OutputSink)> = matches
+        .get_many::<(OutputFormat, OutputSink)>("output")
+        .expect("Error")
+        .collect();
+    let mut output: Vec<(OutputFormat, Box<dyn Write>)> = output
+        .into_iter()
+        .map(|x| (x.0.clone(), x.1.output()))
+        .collect();
 
     for x in &mut output {
-        write!(x.1, "{}", x.0.start(schematics.len() as u32, &search_behavior, start.elapsed().as_millis())).unwrap();
+        write!(
+            x.1,
+            "{}",
+            x.0.start(
+                schematics.len() as u32,
+                &search_behavior,
+                start.elapsed().as_millis()
+            )
+        )
+        .unwrap();
     }
 
-    ThreadPoolBuilder::new().num_threads(*matches.get_one::<usize>("threads").expect("Could not get threads")).build_global().unwrap();
+    ThreadPoolBuilder::new()
+        .num_threads(
+            *matches
+                .get_one::<usize>("threads")
+                .expect("Could not get threads"),
+        )
+        .build_global()
+        .unwrap();
 
     let bar = ProgressBar::new(schematics.len() as u64); // "maschine"
-    bar.set_style(ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}").unwrap());
-    let term_size = *matches.get_one::<u16>("machine").expect("Could not get machine");
+    bar.set_style(
+        ProgressStyle::with_template("[{elapsed}, ETA: {eta}] {wide_bar} {pos}/{len} {per_sec}")
+            .unwrap(),
+    );
+    let term_size = *matches
+        .get_one::<u16>("machine")
+        .expect("Could not get machine");
     if term_size != 0 {
-        bar.set_draw_target(ProgressDrawTarget::term_like(Box::new(MaschineStdErr { size: term_size })))
+        bar.set_draw_target(ProgressDrawTarget::term_like(Box::new(MaschineStdErr {
+            size: term_size,
+        })))
     }
 
-    let max_matching = *matches.get_one::<usize>("limit").expect("Could not get max-matching");
+    let max_matching = *matches
+        .get_one::<usize>("limit")
+        .expect("Could not get max-matching");
 
-    let matches: Vec<SearchResult> = schematics.par_iter().progress_with(bar).map(|schem| {
-        match schem {
+    let matches: Vec<SearchResult> = schematics
+        .par_iter()
+        .progress_with(bar)
+        .map(|schem| match schem {
             SchematicSupplierType::PATH(schem) => {
                 let schematic = match load_schem(&schem.path) {
                     Some(x) => x,
-                    None => return SearchResult {
-                        name: schem.get_name(),
-                        matches: Vec::default(),
+                    None => {
+                        return SearchResult {
+                            name: schem.get_name(),
+                            matches: Vec::default(),
+                        }
                     }
                 };
                 search_in_schem(schematic, pattern.as_ref(), search_behavior, schem)
             }
             #[cfg(feature = "sql")]
-            SchematicSupplierType::SQL(schem) => {
-                match schem.get_schematic() {
-                    Ok(schematic) => search_in_schem(schematic, pattern.as_ref(), search_behavior, schem),
-                    Err(e) => {
-                        eprintln!("Error while loading schematic ({}): {}", schem.get_name(), e.to_string());
-                        SearchResult {
-                            name: schem.get_name(),
-                            matches: Vec::default(),
-                        }
+            SchematicSupplierType::SQL(schem) => match schem.get_schematic() {
+                Ok(schematic) => {
+                    search_in_schem(schematic, pattern.as_ref(), search_behavior, schem)
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Error while loading schematic ({}): {}",
+                        schem.get_name(),
+                        e.to_string()
+                    );
+                    SearchResult {
+                        name: schem.get_name(),
+                        matches: Vec::default(),
                     }
                 }
-            }
-        }
-    }).collect();
+            },
+        })
+        .collect();
 
     let mut matches_count = 0;
 
@@ -340,14 +389,18 @@ fn main() {
         }
     }
 
-    let end = std::time::Instant::now();
     for x in &mut output {
-        write!(x.1, "{}", x.0.end(end.duration_since(start).as_millis())).unwrap();
+        write!(x.1, "{}", x.0.end(start.elapsed())).unwrap();
         x.1.flush().unwrap();
     }
 }
 
-fn search_in_schem(schematic: SpongeSchematic, pattern: Option<&SpongeSchematic>, search_behavior: SearchBehavior, schem: &impl SchematicSupplier) -> SearchResult {
+fn search_in_schem(
+    schematic: SpongeSchematic,
+    pattern: Option<&SpongeSchematic>,
+    search_behavior: SearchBehavior,
+    schem: &impl SchematicSupplier,
+) -> SearchResult {
     if search_behavior.invalid_nbt {
         if has_invalid_nbt(schematic) {
             SearchResult {
@@ -377,7 +430,11 @@ fn load_schem(schem_path: &PathBuf) -> Option<SpongeSchematic> {
     match SpongeSchematic::load(schem_path) {
         Ok(x) => Some(x),
         Err(e) => {
-            println!("Error while loading schematic ({}): {}", schem_path.to_str().unwrap(), e.to_string());
+            println!(
+                "Error while loading schematic ({}): {}",
+                schem_path.to_str().unwrap(),
+                e.to_string()
+            );
             None
         }
     }
@@ -388,4 +445,3 @@ struct SearchResult {
     name: String,
     matches: Vec<Match>,
 }
-
