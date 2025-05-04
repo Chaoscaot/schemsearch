@@ -65,7 +65,7 @@ impl SpongeSchematic {
     pub fn load_data<R>(data: &mut R) -> Result<SpongeSchematic, String> where R: Read {
         let nbt: CompoundTag = nbt::decode::read_gzip_compound_tag(data).map_err(|e| e.to_string())?;
         let version = nbt.get_i32("Version").unwrap_or_else(|_| {
-            return if nbt.contains_key("Blocks") {
+            return if nbt.contains_key("Schematic") {
                 3
             } else if nbt.contains_key("BlockEntities") {
                 2
@@ -79,7 +79,7 @@ impl SpongeSchematic {
         match version {
             1 => SpongeSchematic::from_nbt_1(nbt),
             2 => SpongeSchematic::from_nbt_2(nbt),
-            3 => SpongeSchematic::from_nbt_3(nbt),
+            3 => SpongeSchematic::from_nbt_3(nbt.get_compound_tag("Schematic").map_err(|e| e.to_string())?),
             _ => Err("Invalid schematic: Unknown Version".to_string()),
         }
     }
@@ -121,7 +121,7 @@ impl SpongeSchematic {
         })
     }
 
-    pub fn from_nbt_3(nbt: CompoundTag) -> Result<Self, String> {
+    pub fn from_nbt_3(nbt: &CompoundTag) -> Result<Self, String> {
         let blocks = nbt.get_compound_tag("Blocks").map_err(|e| e.to_string())?;
         Ok(Self{
             data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
