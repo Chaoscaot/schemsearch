@@ -1,6 +1,6 @@
 use math::round::ceil;
 use ocl::SpatialDims::Three;
-use ocl::{core, Buffer, Image, MemFlags, ProQue};
+use ocl::{core, Buffer, CommandQueueProperties, Context, Image, MemFlags, ProQue};
 use schemsearch_common::{time, Match, SearchBehavior};
 use std::sync::OnceLock;
 use std::time;

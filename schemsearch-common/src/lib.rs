@@ -37,11 +37,20 @@ pub struct Match {
 
 #[macro_export]
 macro_rules! time {
-    ($name:ident, $body:block) => {{
-        let start = std::time::Instant::now();
-        let result = $body;
-        let duration = start.elapsed();
-        println!("{} took {:?}", stringify!($name), duration);
-        result
-    }};
+    ($name:ident, $body:block) => {
+        {
+            #[cfg(debug_assertions)]
+            {
+                let start = std::time::Instant::now();
+                let result = $body;
+                let duration = start.elapsed();
+                println!("{} took {:?}", stringify!($name), duration);
+                result
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                $body
+            }
+        }
+    };
 }
