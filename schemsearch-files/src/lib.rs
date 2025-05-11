@@ -132,7 +132,7 @@ impl SpongeSchematic {
             offset: read_offset(nbt.get_i32_vec("Offset").map_err(|e| e.to_string())?)?,
             palette_max: compute_palette_max(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             palette: read_palette(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
-            block_data: read_blocks(blocks.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
+            block_data: read_blocks(blocks.get_i8_vec("Data").map_err(|e| e.to_string())?),
             block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").unwrap_or_else(|_| vec![]))?,
             entities: None,
         })
