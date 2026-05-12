@@ -15,10 +15,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use nbt::{CompoundTag, Tag};
 use std::collections::hash_map::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
-use nbt::{CompoundTag, Tag};
 
 #[derive(Clone, Debug)]
 pub struct SpongeSchematic {
@@ -62,8 +62,12 @@ pub struct Entity {
 }
 
 impl SpongeSchematic {
-    pub fn load_data<R>(data: &mut R) -> Result<SpongeSchematic, String> where R: Read {
-        let nbt: CompoundTag = nbt::decode::read_gzip_compound_tag(data).map_err(|e| e.to_string())?;
+    pub fn load_data<R>(data: &mut R) -> Result<SpongeSchematic, String>
+    where
+        R: Read,
+    {
+        let nbt: CompoundTag =
+            nbt::decode::read_gzip_compound_tag(data).map_err(|e| e.to_string())?;
         let version = nbt.get_i32("Version").unwrap_or_else(|_| {
             return if nbt.contains_key("Blocks") {
                 3
@@ -79,7 +83,10 @@ impl SpongeSchematic {
         match version {
             1 => SpongeSchematic::from_nbt_1(nbt),
             2 => SpongeSchematic::from_nbt_2(nbt),
-            3 => SpongeSchematic::from_nbt_3(nbt),
+            3 => SpongeSchematic::from_nbt_3(
+                nbt.get_compound_tag("Schematic")
+                    .map_err(|e| e.to_string())?,
+            ),
             _ => Err("Invalid schematic: Unknown Version".to_string()),
         }
     }
@@ -92,7 +99,10 @@ impl SpongeSchematic {
     pub fn from_nbt_1(nbt: CompoundTag) -> Result<Self, String> {
         Ok(Self {
             data_version: 0,
-            metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
+            metadata: nbt
+                .get_compound_tag("Metadata")
+                .map(|v| v.clone())
+                .unwrap_or_else(|_| CompoundTag::new()),
             width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
             height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
             length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
@@ -100,15 +110,21 @@ impl SpongeSchematic {
             palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
             palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-            block_entities: read_tile_entities(nbt.get_compound_tag_vec("TileEntities").unwrap_or_else(|_| vec![]))?,
+            block_entities: read_tile_entities(
+                nbt.get_compound_tag_vec("TileEntities")
+                    .unwrap_or_else(|_| vec![]),
+            )?,
             entities: None,
         })
     }
 
     pub fn from_nbt_2(nbt: CompoundTag) -> Result<Self, String> {
-        Ok(Self{
+        Ok(Self {
             data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
-            metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
+            metadata: nbt
+                .get_compound_tag("Metadata")
+                .map(|v| v.clone())
+                .unwrap_or_else(|_| CompoundTag::new()),
             width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
             height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
             length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
@@ -116,32 +132,37 @@ impl SpongeSchematic {
             palette_max: nbt.get_i32("PaletteMax").map_err(|e| e.to_string())?,
             palette: read_palette(nbt.get_compound_tag("Palette").map_err(|e| e.to_string())?),
             block_data: read_blocks(nbt.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
-            block_entities: read_tile_entities(nbt.get_compound_tag_vec("BlockEntities").unwrap_or_else(|_| vec![]))?,
+            block_entities: read_tile_entities(
+                nbt.get_compound_tag_vec("BlockEntities")
+                    .unwrap_or_else(|_| vec![]),
+            )?,
             entities: None,
         })
     }
 
-    pub fn from_nbt_3(nbt: CompoundTag) -> Result<Self, String> {
+    pub fn from_nbt_3(nbt: &CompoundTag) -> Result<Self, String> {
         let blocks = nbt.get_compound_tag("Blocks").map_err(|e| e.to_string())?;
-        Ok(Self{
+        Ok(Self {
             data_version: nbt.get_i32("DataVersion").map_err(|e| e.to_string())?,
-            metadata: nbt.get_compound_tag("Metadata").map_err(|e| e.to_string())?.clone(),
+            metadata: nbt
+                .get_compound_tag("Metadata")
+                .map(|v| v.clone())
+                .unwrap_or_else(|_| CompoundTag::new()),
             width: nbt.get_i16("Width").map_err(|e| e.to_string())? as u16,
             height: nbt.get_i16("Height").map_err(|e| e.to_string())? as u16,
             length: nbt.get_i16("Length").map_err(|e| e.to_string())? as u16,
             offset: read_offset(nbt.get_i32_vec("Offset").map_err(|e| e.to_string())?)?,
-            palette_max: compute_palette_max(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
+            palette_max: compute_palette_max(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?) + 1,
             palette: read_palette(blocks.get_compound_tag("Palette").map_err(|e| e.to_string())?),
-            block_data: read_blocks(blocks.get_i8_vec("BlockData").map_err(|e| e.to_string())?),
+            block_data: read_blocks(blocks.get_i8_vec("Data").map_err(|e| e.to_string())?),
             block_entities: read_tile_entities(blocks.get_compound_tag_vec("BlockEntities").unwrap_or_else(|_| vec![]))?,
             entities: None,
         })
     }
-
 }
 
 fn read_tile_entities(tag: Vec<&CompoundTag>) -> Result<Vec<BlockEntity>, String> {
-let mut tile_entities = Vec::new();
+    let mut tile_entities = Vec::new();
     for t in tag {
         tile_entities.push(BlockEntity {
             id: t.get_str("Id").map_err(|e| e.to_string())?.to_string(),
@@ -164,8 +185,10 @@ fn read_palette(p: &CompoundTag) -> HashMap<String, i32> {
     let mut palette = HashMap::new();
     for (key, value) in p.iter() {
         match value {
-            Tag::Int(n) => { palette.insert(key.clone(), *n); },
-            _ => {},
+            Tag::Int(n) => {
+                palette.insert(key.clone(), *n);
+            }
+            _ => {}
         };
     }
     palette
@@ -173,10 +196,15 @@ fn read_palette(p: &CompoundTag) -> HashMap<String, i32> {
 
 #[inline]
 fn compute_palette_max(palette: &CompoundTag) -> i32 {
-    palette.iter().map(|(_, v)| v).filter_map(|v| match v {
-        Tag::Int(n) => Some(*n),
-        _ => None,
-    }).max().unwrap_or(0)
+    palette
+        .iter()
+        .map(|(_, v)| v)
+        .filter_map(|v| match v {
+            Tag::Int(n) => Some(*n),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(0)
 }
 
 #[inline]
@@ -193,13 +221,16 @@ pub fn read_varint_array(read: &Vec<i8>) -> Vec<i32> {
     let mut cursor = 0;
     loop {
         match read.get(cursor) {
-            Some(byte) => { current_byte = *byte as u8; cursor += 1; },
+            Some(byte) => {
+                current_byte = *byte as u8;
+                cursor += 1;
+            }
             None => break,
         };
 
         value |= (((current_byte & 0x7F) as u32) << position) as i32;
 
-        if(current_byte & 0x80) == 0 {
+        if (current_byte & 0x80) == 0 {
             data.push(value);
             value = 0;
             position = 0;
