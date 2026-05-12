@@ -259,7 +259,7 @@ fn main() {
         if let Some(x) = matches.get_many::<String>("sql-filter-name") {
             filter = filter.name(x.collect());
         }
-        for schem in block_on(load_all_schematics(filter)) {
+        for schem in block_on(load_all_schematics(filter, *matches.get_one::<usize>("threads").expect("Could not get Threads") as u32)) {
             schematics.push(SchematicSupplierType::SQL(SqlSchematicSupplier {
                 node: schem
             }))

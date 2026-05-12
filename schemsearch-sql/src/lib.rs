@@ -30,12 +30,12 @@ pub struct SchematicNode {
     pub name: String
 }
 
-pub async unsafe fn get_connection() {
+pub async unsafe fn get_connection(connections: u32) {
     let mut conn = CONN.lock().unwrap();
     if conn.is_none() {
         let properties = properties::load_mysql_properties();
         let _ = conn.insert(MySqlPoolOptions::new()
-            .max_connections(5)
+            .max_connections(connections)
             .connect_with(MySqlConnectOptions::new()
                 .host(properties.host.as_str())
                 .port(3306)
@@ -46,8 +46,8 @@ pub async unsafe fn get_connection() {
     }
 }
 
-pub async fn load_all_schematics(filter: SchematicFilter) -> Vec<SchematicNode> {
-    unsafe { get_connection().await; }
+pub async fn load_all_schematics(filter: SchematicFilter, connections: u32) -> Vec<SchematicNode> {
+    unsafe { get_connection(connections).await; }
     let mut schematics = Vec::new();
     let rows = unsafe { &CONN }.lock().unwrap().as_mut().unwrap().fetch_all(format!("SELECT SN.NodeId, SN.NodeName FROM NodeData ND INNER JOIN SchematicNode SN ON SN.NodeId = ND.NodeId WHERE NodeFormat >= 2 {}", filter.build()).as_str()).await.expect("Failed to fetch schematics");
     for row in rows {
@@ -60,7 +60,7 @@ pub async fn load_all_schematics(filter: SchematicFilter) -> Vec<SchematicNode> 
 }
 
 pub async fn load_schemdata(id: i32) -> Vec<u8> {
-    unsafe { get_connection().await; }
+    unsafe { get_connection(5).await; }
     let rows = unsafe { &CONN }.lock().unwrap().as_mut().unwrap().fetch_one(format!("SELECT SchemData FROM NodeData WHERE NodeId = {}", id).as_str()).await.expect("Failed to fetch schematics");
     rows.get(0)
 }
